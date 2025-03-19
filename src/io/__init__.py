@@ -1,4 +1,3 @@
-import asyncio
 import websockets
 
 class IO:
@@ -21,8 +20,7 @@ class IO:
     async def on_message(self, websocket):
         async for message in websocket:
             if self.message_callback:
-                # print(message)
-                await self.message_callback(message)
+                return await self.message_callback(message)
     
     async def send(self, message):
         if self.ws:
@@ -31,21 +29,10 @@ class IO:
     async def recv(self):
         if self.ws:
             message = await self.ws.recv()
-            # print(f"{message}")
-            return message
-    
+            # print(message)
+            if self.message_callback:
+                return await self.message_callback(message)
+
     async def close(self):
         if self.ws:
             await self.ws.close()
-    
-    async def start(self):
-        await self.connect()
-        if self.role == 'client':
-            while True:
-                message = await self.recv()
-                if self.message_callback:
-                    await self.message_callback(message)
-                # print(message)
-
-        elif self.role == 'server':
-            await asyncio.Future()

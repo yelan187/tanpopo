@@ -9,10 +9,10 @@ class Bot:
         message = {
             "action": "send_private_msg",
             "params": {
-                "user_id":3061422023,
+                "user_id": 3061422023,
                 "message":'aaa',
             }
         }
         message = json.dumps(message)
-        print(message)
+
         await self.io.send(message)
