@@ -27,8 +27,8 @@ class Bot:
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
             if messageEvent.is_tome():
                 # print("收到群聊消息")
-                chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
                 relavant_memories = self.memory.recall(messageEvent)
+                chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
                 prompt = self.prompt_builder.build_prompt(messageEvent,chat_history,relavant_memories)
                 raw_resp = self.llm_api.send_request_text(prompt) 
                 resp = raw_resp.split("。")

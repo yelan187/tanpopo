@@ -16,19 +16,16 @@ def build(obj, json):
 
 class MessageEvent:
     def __init__(self,rules = None):
-        if rules == None:
-            self.rules = [
-                "self_id",
-                "user_id",
-                "message_id",
-                "sender",
-                "message",
-                "message_type",
-                "group_id",
-                "raw_message"
-            ]
-        else:
-            self.rules = rules
+        self.rules = [
+            "self_id",
+            "user_id",
+            "message_id",
+            "sender",
+            "message",
+            "message_type",
+            "group_id",
+            "raw_message"
+        ] if rules == None else rules
 
     def __call__(self, messageEvent: str):
         messageEvent = json.loads(messageEvent)
@@ -61,14 +58,11 @@ class Segment:
 
 class Sender:
     def __init__(self,rules = None):
-        if rules == None:
-            self.rules = [
-                "user_id",
-                "nickname",
-                "card"
-            ]
-        else:
-            self.rules = rules
+        self.rules = [
+            "user_id",
+            "nickname",
+            "card"
+        ] if rules == None else rules
 
 class Message:
     def __init__(self,segments):
