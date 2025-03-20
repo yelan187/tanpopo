@@ -45,7 +45,7 @@ class MessageEvent:
         return self.message_type == 'private'
 
     def get_plaintext(self):
-        return self.raw_message
+        return "".join([segment.data.get('text') for segment in self.message.segments if segment.type == 'text'])
 
     def is_tome(self):
         for segment in self.message.segments:
@@ -57,7 +57,7 @@ class Segment:
     def __init__(self,segment):
         self.type = segment.get('type')
         self.data = segment.get('data')
-        print(self.data,self.type)
+        # print(self.data,self.type)
 
 class Sender:
     def __init__(self,rules = None):

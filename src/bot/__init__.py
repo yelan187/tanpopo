@@ -5,6 +5,8 @@ from .message_buffer import MessageManager
 from .llmapi import llmApi
 from .config import global_config
 
+from .memory import Memory
+
 import json
 
 class Bot:
@@ -13,6 +15,7 @@ class Bot:
         self.llm_api = llmApi(global_config.gpt_settings)
         self.message_manager = MessageManager()
         self.ws = ws
+        self.memory = Memory()
 
     def handle_message(self, messageEvent:MessageEvent) -> list[str]:
         """
@@ -23,9 +26,10 @@ class Bot:
         if messageEvent.is_group():
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
             if messageEvent.is_tome():
-                print("收到群聊消息")
+                # print("收到群聊消息")
                 chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
-                prompt = self.prompt_builder.build_prompt(messageEvent,chat_history)
+                relavant_memories = self.memory.recall(messageEvent)
+                prompt = self.prompt_builder.build_prompt(messageEvent,chat_history,relavant_memories)
                 raw_resp = self.llm_api.send_request_text(prompt) 
                 resp = raw_resp.split("。")
                 return [self.warp_message(messageEvent.message_type,messageEvent.group_id,part) for part in resp if part]
@@ -37,7 +41,7 @@ class Bot:
                 'action': 'send_msg',
                 'params': {
                     'message_type': message_type,
-                    'message': message
+                    'message': '114514::' + message
                 }
             }
         if message_type == 'private':

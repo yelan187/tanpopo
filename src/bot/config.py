@@ -7,10 +7,11 @@ class Config:
     """
 
     enabled_prompts = [
+        "personal_information",        
         "time",
-        "personal_information",
         "chat_history",
         "current_msg",
+        "memory"
         "basic",
     ]
 

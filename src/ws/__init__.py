@@ -29,10 +29,16 @@ class WS:
     async def recv(self):
         if self.ws:
             message = await self.ws.recv()
-            print(message)
+            # print(message)
             if self.message_callback:
                 return self.message_callback(message)
 
     async def close(self):
         if self.ws:
             await self.ws.close()
+
+    async def send_message_list(self,message_list):
+        if message_list == None:
+            return
+        for message in message_list:
+            await self.send(message)

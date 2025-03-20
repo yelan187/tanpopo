@@ -41,3 +41,5 @@ class MessageManager:
             if id in self.group_buffers:
                 return self.group_buffers[id].get_all()
         return []
+    
+message_manager = MessageManager()
