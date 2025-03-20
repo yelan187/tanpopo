@@ -9,6 +9,7 @@ class Config:
     enabled_prompts = [
         "personal_information",        
         "time",
+        "schedule",
         "chat_history",
         "current_msg",
         "memory",
@@ -27,5 +28,7 @@ class Config:
         "personality": "你是一个大一学生，正在学习计算机科学，你性格不错，为人友善但有点腹黑",
         "nickname": "N0thing",
     }
+
+    log_level = "DEBUG"
 
 global_config = Config()
