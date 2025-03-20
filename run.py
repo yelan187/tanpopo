@@ -1,6 +1,6 @@
 import asyncio
 from src.ws import WS
-from src.bot import Bot
+from src.bot.bot import Bot
 
 from src.event import MessageEvent
 

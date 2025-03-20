@@ -1,13 +1,18 @@
-from ..event import MessageEvent
+import json
+import logging
 
+from ..event import MessageEvent
 from .prompt_builder import promptBuilder
 from .message_buffer import MessageManager
 from .llmapi import llmApi
 from .config import global_config
-
 from .memory import Memory
 
-import json
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] | %(message)s",
+    handlers=[logging.StreamHandler()],
+)
 
 class Bot:
     def __init__(self,ws):
@@ -30,13 +35,14 @@ class Bot:
                 relavant_memories = self.memory.recall(messageEvent)
                 chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
                 prompt = self.prompt_builder.build_prompt(messageEvent,chat_history,relavant_memories)
+                logging.info(f"思考prompt:{prompt}")
                 raw_resp = self.llm_api.send_request_text(prompt) 
                 resp = raw_resp.split("。")
-                return [self.warp_message(messageEvent.message_type,messageEvent.group_id,part) for part in resp if part]
+                return [self.wrap_message(messageEvent.message_type,messageEvent.group_id,part) for part in resp if part]
             else:
                 return []
 
-    def warp_message(self, message_type, id, message: str) -> str:
+    def wrap_message(self, message_type, id, message: str) -> str:
         tmp = {
                 'action': 'send_msg',
                 'params': {

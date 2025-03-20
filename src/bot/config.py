@@ -11,7 +11,7 @@ class Config:
         "time",
         "chat_history",
         "current_msg",
-        "memory"
+        "memory",
         "basic",
     ]
 

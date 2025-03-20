@@ -1,7 +1,6 @@
 import time
 from ..event import MessageEvent
 from .config import global_config
-from bot import Bot 
 
 class promptBuilder:
     def __init__(self,enabled_prompts:list[str]):
@@ -32,7 +31,7 @@ class promptBuilder:
     def _prompt_current_msg(self, current_message: MessageEvent, *args):
         return f"<CurrentMessage>刚才,昵称为`{current_message.sender.nickname}`的用户说：`{current_message.get_plaintext()}`，这引起了你的注意</CurrentMessage>"
     
-    def _prompt_chat_history(self, current_message: MessageEvent, chat_history: list[MessageEvent]):
+    def _prompt_chat_history(self, current_message: MessageEvent, chat_history: list[MessageEvent],*args):
         if len(chat_history) == 0:
             return ""
         is_private = current_message.is_private()
