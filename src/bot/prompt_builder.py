@@ -1,7 +1,6 @@
 import time
 from ..event import MessageEvent
 from .config import global_config
-from bot import Bot 
 
 class promptBuilder:
     def __init__(self,enabled_prompts:list[str]):

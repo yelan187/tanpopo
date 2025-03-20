@@ -17,17 +17,19 @@ class Bot:
         self.ws = ws
         self.memory = Memory()
 
-    def handle_message(self, messageEvent:MessageEvent) -> list[str]:
+    def handle_message(self, messageEvent: MessageEvent) -> list[str]:
         """
         消息处理函数
         Args:
             message (MessageEvent): 消息事件
         """
+        key_words = self.llm_api.get_keywords(messageEvent)
+        emotion = self.llm_api.get_emotion(messageEvent)
+        relavant_memories = self.memory.recall(messageEvent,key_words)
         if messageEvent.is_group():
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
             if messageEvent.is_tome():
                 # print("收到群聊消息")
-                relavant_memories = self.memory.recall(messageEvent)
                 chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
                 prompt = self.prompt_builder.build_prompt(messageEvent,chat_history,relavant_memories)
                 raw_resp = self.llm_api.send_request_text(prompt) 
