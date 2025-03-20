@@ -42,7 +42,7 @@ class promptBuilder:
         prompt += "</ChatHistory>"
         return prompt
     
-    def _promopt_memory(self, current_message: MessageEvent, chat_history: list[MessageEvent], relevant_memories:dict[str, list[str]]):
+    def _prompt_memory(self, current_message: MessageEvent, chat_history: list[MessageEvent], relevant_memories:dict[str, list[str]]):
         # prompt = f"<Memory>这使你回忆起了以下事件:"
         # for key in relevant_memories:
         #     prompt += f"{key}:"
