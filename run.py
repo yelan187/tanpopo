@@ -2,7 +2,7 @@ import asyncio
 from src.io import IO
 from src.bot import Bot
 
-from src.message import Message
+from src.event import MessageEvent
 
 async def main(bot: Bot):
     await bot.io.connect()
@@ -11,10 +11,12 @@ async def main(bot: Bot):
         while True:
             res = await bot.io.recv()
             if res:
-                bot.handle_message(res)
+                message_list: str = bot.handle_message(res)
+                async for message in message_list:
+                    await bot.io.send(message)
 
 if __name__ == '__main__':
-    io = IO(host='127.0.0.1', port=3001, role='client', callback=Message())
+    io = IO(host='127.0.0.1', port=3001, role='client', callback=MessageEvent())
     
     bot = Bot(io=io)
 
