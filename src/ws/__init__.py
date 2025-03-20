@@ -20,7 +20,7 @@ class WS:
     async def on_message(self, websocket):
         async for message in websocket:
             if self.message_callback:
-                return await self.message_callback(message)
+                self.message_callback(message)
     
     async def send(self, message):
         if self.ws:
@@ -29,9 +29,9 @@ class WS:
     async def recv(self):
         if self.ws:
             message = await self.ws.recv()
-            # print(message)
+            print(message)
             if self.message_callback:
-                return await self.message_callback(message)
+                return self.message_callback(message)
 
     async def close(self):
         if self.ws:

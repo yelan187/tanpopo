@@ -1,5 +1,4 @@
 import json
-from ..bot.config import global_config
 
 def build(obj, json):
     for key,value in json.items():
@@ -9,7 +8,7 @@ def build(obj, json):
                 messageobj = Message(value)
                 setattr(obj, key, messageobj)
             elif isinstance(value, dict):
-                sub_obj = locals()[key[0].upper() + key[1:]]()
+                sub_obj = globals()[key[0].upper() + key[1:]]()
                 build(sub_obj, value)
                 setattr(obj, key, sub_obj)
             else:
@@ -25,7 +24,8 @@ class MessageEvent:
                 "sender",
                 "message",
                 "message_type",
-                "group_id"
+                "group_id",
+                "raw_message"
             ]
         else:
             self.rules = rules
@@ -41,9 +41,15 @@ class MessageEvent:
     def is_group(self):
         return self.message_type == 'group'
     
+    def is_private(self):
+        return self.message_type == 'private'
+
+    def get_plaintext(self):
+        return self.raw_message
+
     def is_tome(self):
         for segment in self.message.segments:
-            if segment.type == 'at' and segment.data.get('qq') == 'all' or segment.data.get('qq') == self.self_id:
+            if segment.type == 'at' and (segment.data.get('qq') == 'all' or int(segment.data.get('qq')) == self.self_id):
                 return True
         return False
 
@@ -51,6 +57,7 @@ class Segment:
     def __init__(self,segment):
         self.type = segment.get('type')
         self.data = segment.get('data')
+        print(self.data,self.type)
 
 class Sender:
     def __init__(self,rules = None):

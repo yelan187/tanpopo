@@ -14,7 +14,7 @@ class Bot:
         self.message_manager = MessageManager()
         self.ws = ws
 
-    async def handle_message(self, messageEvent:MessageEvent) -> list[str]:
+    def handle_message(self, messageEvent:MessageEvent) -> list[str]:
         """
         消息处理函数
         Args:
@@ -23,6 +23,7 @@ class Bot:
         if messageEvent.is_group():
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
             if messageEvent.is_tome():
+                print("收到群聊消息")
                 chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
                 prompt = self.prompt_builder.build_prompt(messageEvent,chat_history)
                 raw_resp = self.llm_api.send_request_text(prompt) 
