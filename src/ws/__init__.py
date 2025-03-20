@@ -1,6 +1,6 @@
 import websockets
 
-class IO:
+class WS:
     def __init__(self, host, port, role='client', callback=None):
         self.host = host
         self.port = port

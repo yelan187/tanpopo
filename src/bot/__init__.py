@@ -8,11 +8,11 @@ from .config import global_config
 import json
 
 class Bot:
-    def __init__(self,io):
+    def __init__(self,ws):
         self.prompt_builder =promptBuilder(global_config.enabled_prompts)
         self.llm_api = llmApi(global_config.gpt_settings)
         self.message_manager = MessageManager()
-        self.io = io
+        self.ws = ws
 
     async def handle_message(self, messageEvent:MessageEvent) -> list[str]:
         """
