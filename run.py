@@ -6,7 +6,8 @@ from src.bot.logger import register_logger
 
 logger = register_logger('main')
 
-async def main(bot: Bot):
+async def main(ws:WS):
+    bot = Bot(ws=ws)
     await bot.ws.connect()
     if bot.ws.role == 'client':
         while True:
@@ -16,7 +17,5 @@ async def main(bot: Bot):
 
 if __name__ == '__main__':
     ws = WS(host='127.0.0.1', port=3001, role='client')
-    
-    bot = Bot(ws=ws)
     logger.info('监听进程启动')
-    asyncio.run(main(bot))
+    asyncio.run(main(ws))

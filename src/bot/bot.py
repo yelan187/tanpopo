@@ -1,6 +1,7 @@
 import json
 import time
 import random
+import asyncio
 
 from ..event import MessageEvent
 from .prompt_builder import promptBuilder
@@ -9,6 +10,7 @@ from .llmapi import llmApi
 from .config import global_config
 from .memory import Memory
 from .schedule_generator import scheduleGenerator
+from .willing_manager import WillingManager
 from .logger import register_logger
 from ..ws import WS
 
@@ -20,6 +22,8 @@ class Bot:
         self.llm_api = llmApi(global_config.gpt_settings)
         self.message_manager = MessageManager()
         self.schedule_generator = scheduleGenerator()
+        self.willing_manager = WillingManager()
+        asyncio.create_task(self.willing_manager.start_regression_task())
         self.memory = Memory()
         self.ws = ws
 
@@ -35,6 +39,8 @@ class Bot:
         if messageEvent.is_group():
             logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
+            willing = await self.willing_manager.get_current_willing()
+            logger.debug(f"当前回复意愿->{willing}")
             if messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.3:
                 # relavant_memories = self.memory.recall(messageEvent)
                 relavant_memories = None
