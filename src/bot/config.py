@@ -31,7 +31,7 @@ class Config:
     }
 
     group_talk_allowed = [
-        # 244847198,
+        244847198,
         1040847329,
     ]
 

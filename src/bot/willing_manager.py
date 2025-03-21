@@ -46,5 +46,5 @@ class WillingManager:
         :param dicide_send: 是否发送消息
         """
         async with self.lock:  # 确保线程安全
-            self.current_willing = max(0, self.current_willing - 0.2)
+            self.current_willing = max(0, self.current_willing - 0.3)
             logger.debug(f"回复意愿减少到 -> {self.current_willing:.2f}")
