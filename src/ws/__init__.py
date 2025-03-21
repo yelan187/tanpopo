@@ -36,9 +36,3 @@ class WS:
     async def close(self):
         if self.ws:
             await self.ws.close()
-
-    async def send_message_list(self,message_list):
-        if message_list == None:
-            return
-        for message in message_list:
-            await self.send(message)

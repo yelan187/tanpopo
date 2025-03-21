@@ -11,10 +11,10 @@ class promptBuilder:
             if func:
                 self.prompt_list.append(func)
 
-    def build_prompt(self,current_message:MessageEvent,chat_history:list[MessageEvent],relevant_memories) -> str:
+    def build_prompt(self,current_message:MessageEvent,chat_history:list[MessageEvent],relevant_memories,routine:str) -> str:
         prompt = ""
         for func in self.prompt_list:
-            prompt += func(current_message, chat_history,relevant_memories)
+            prompt += func(current_message, chat_history,relevant_memories,routine)
         return prompt
 
     def _prompt_personal_information(self, *args):
@@ -31,7 +31,7 @@ class promptBuilder:
     def _prompt_current_msg(self, current_message: MessageEvent, *args):
         return f"<CurrentMessage>刚才,昵称为`{current_message.sender.nickname}`的用户说：`{current_message.get_plaintext()}`，这引起了你的注意</CurrentMessage>"
     
-    def _prompt_chat_history(self, current_message: MessageEvent, chat_history: list[MessageEvent]):
+    def _prompt_chat_history(self, current_message: MessageEvent, chat_history: list[MessageEvent],*args):
         if len(chat_history) == 0:
             return ""
         is_private = current_message.is_private()
@@ -41,7 +41,10 @@ class promptBuilder:
         prompt += "</ChatHistory>"
         return prompt
     
-    def _prompt_memory(self, current_message: MessageEvent, chat_history: list[MessageEvent], relevant_memories:dict[str, list[str]]):
+    def _prompt_schedule(self,current_message: MessageEvent, chat_history: list[MessageEvent], relevant_memories:dict[str, list[str]], routine:str):
+        return f"<schedule>根据你的日程，你现在正在{routine}</schedule>"
+    
+    def _prompt_memory(self, current_message: MessageEvent, chat_history: list[MessageEvent], relevant_memories:dict[str, list[str]],*args):
         # prompt = f"<Memory>这使你回忆起了以下事件:"
         # for key in relevant_memories:
         #     prompt += f"{key}:"
