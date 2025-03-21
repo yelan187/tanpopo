@@ -1,6 +1,7 @@
 import asyncio
 
 from .logger import register_logger
+from ..event import MessageEvent
 
 logger = register_logger("willing_manager")
 
@@ -18,7 +19,7 @@ class WillingManager:
         while True:
             await asyncio.sleep(10)  # 每 10 秒更新一次
             async with self.lock:  # 确保线程安全
-                self.current_willing += (0.4 - self.current_willing) / 10
+                self.current_willing += (0.4 - self.current_willing) / 15
                 logger.debug(f"当前回复意愿 -> {self.current_willing:.2f}")
 
     async def start_regression_task(self):
@@ -46,5 +47,14 @@ class WillingManager:
         :param dicide_send: 是否发送消息
         """
         async with self.lock:  # 确保线程安全
-            self.current_willing = max(0, self.current_willing - 0.3)
+            self.current_willing = max(0, self.current_willing - 0.4)
             logger.debug(f"回复意愿减少到 -> {self.current_willing:.2f}")
+
+    async def change_willing_after_receive(self,message: MessageEvent):
+        """
+        事件触发后改变回复意愿。
+        """
+        if message.is_tome():
+            async with self.lock:
+                self.current_willing = min(1, self.current_willing + 0.5)
+                logger.debug(f"回复意愿增加到 -> {self.current_willing:.2f}")
