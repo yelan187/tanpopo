@@ -28,6 +28,9 @@ class Bot:
         Args:
             message (MessageEvent): 消息事件
         """
+        key_words = self.llm_api.get_keywords(messageEvent)
+        emotion = self.llm_api.get_emotion(messageEvent)
+        relavant_memories = self.memory.recall(messageEvent,key_words)
         if messageEvent.is_group():
             logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)

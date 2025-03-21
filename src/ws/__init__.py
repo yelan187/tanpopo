@@ -1,4 +1,5 @@
 import websockets
+from ..event import MessageEvent
 
 class WS:
     def __init__(self, host, port, role='client', callback=None):
@@ -29,9 +30,9 @@ class WS:
     async def recv(self):
         if self.ws:
             message = await self.ws.recv()
-            # print(message)
-            if self.message_callback:
-                return self.message_callback(message)
+            messageEvent = MessageEvent()
+            return messageEvent(message)
+
 
     async def close(self):
         if self.ws:

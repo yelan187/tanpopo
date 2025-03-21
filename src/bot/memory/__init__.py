@@ -4,10 +4,10 @@ class Memory():
     def __init__(self):
         pass
 
-    def recall(self, messageEvent: MessageEvent) -> dict[str,list[str]]:
+    def recall(self, messageEvent:MessageEvent, key_words: str) -> dict[str,list[str]]:
         """
-        更新记忆同时返回相关记忆
+        根据关键词更新并返回相关记忆
         Args:
-            messageEvent (MessageEvent): 当前消息事件
+            key_word (str): 关键词
         """
-        return {}
+        pass
