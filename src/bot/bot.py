@@ -1,6 +1,11 @@
 import json
 import time
+import datetime
 import random
+import asyncio
+
+import jieba
+import jieba.analyse
 
 from ..event import MessageEvent
 from .prompt_builder import promptBuilder
@@ -9,6 +14,7 @@ from .llmapi import llmApi
 from .config import global_config
 from .memory import Memory
 from .schedule_generator import scheduleGenerator
+from .willing_manager import WillingManager
 from .logger import register_logger
 from ..ws import WS
 
@@ -20,6 +26,8 @@ class Bot:
         self.llm_api = llmApi(global_config.gpt_settings)
         self.message_manager = MessageManager()
         self.schedule_generator = scheduleGenerator()
+        self.willing_manager = WillingManager()
+        asyncio.create_task(self.willing_manager.start_regression_task())
         self.memory = Memory()
         self.ws = ws
 
@@ -29,23 +37,29 @@ class Bot:
         Args:
             message (MessageEvent): 消息事件
         """
-        # key_words = self.llm_api.get_keywords(messageEvent)
-        # emotion = self.llm_api.get_emotion(messageEvent)
-        # relavant_memories = self.memory.recall(messageEvent,key_words)
+        logger.info(f"收到来自{'群聊' if messageEvent.is_group() else '私聊'}的消息->{messageEvent.get_plaintext()}")
+        
+        self.message_manager.push_message(messageEvent.get_id(),messageEvent.is_private(),messageEvent)
+        chat_history = self.message_manager.get_all_messages(messageEvent.get_id(),messageEvent.is_private())
+
         if messageEvent.is_group():
             logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
-            if (messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.3) or messageEvent.is_tome():
-                # relavant_memories = self.memory.recall(messageEvent)
-                relavant_memories = None
-                chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
+            willing = await self.willing_manager.get_current_willing()
+            logger.debug(f"当前回复意愿->{willing}")
+            if messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.3:
+                
                 routine = self.schedule_generator.get_current_task()
+                analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
+                relavant_memories = self.memory.recall(analysis_result.get("keywords"))
+                
                 prompt = self.prompt_builder.build_prompt(
                     current_message = messageEvent,
                     chat_history = chat_history,
                     relavant_memories = relavant_memories,
                     routine = routine,
                 )
+                
                 logger.debug(f"构建prompt->{prompt}")
                 raw_resp = self.llm_api.send_request_text(prompt) 
                 resp = raw_resp.split("。")
@@ -85,3 +99,14 @@ class Bot:
         self.ws.send(json.dumps(tmp))
         res = self.ws.recv()
         print(res)
+
+
+    def get_keywords(self,chat_history:list[MessageEvent]):
+        plaintext = ""
+        for message in chat_history:
+            # plaintext += f"[{message.sender.nickname}]:{message.get_plaintext()}\n"
+            plaintext += f"{message.get_plaintext()}\n"
+
+        # logger.info(f"当前上下文->{plaintext}")
+        keywords = jieba.analyse.extract_tags(plaintext, topK=5)
+        return keywords

@@ -6,7 +6,8 @@ from src.bot.logger import register_logger
 
 logger = register_logger('main')
 
-async def main(bot: Bot):
+async def main(ws:WS):
+    bot = Bot(ws=ws)
     await bot.ws.connect()
     if bot.ws.role == 'client':
         while True:

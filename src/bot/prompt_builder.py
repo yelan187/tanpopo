@@ -40,19 +40,22 @@ class promptBuilder:
         is_private = current_message.is_private()
         prompt = f"<ChatHistory>你正在{'私聊' if is_private else '群聊'}中，以下是聊天记录（最先发的在前）:"
         for msg in chat_history:
-            prompt += f"{msg.sender.nickname}说：{msg.get_plaintext()};"
+            prompt += f"**昵称**为{msg.sender.nickname}的人说：{msg.get_plaintext()};"
         prompt += "</ChatHistory>"
         return prompt
     
     def _prompt_schedule(self,routine:str,**kargs):
         return f"<schedule>根据你的日程，你现在正在{routine}</schedule>"
     
-    def _prompt_memory(self, current_message: MessageEvent, chat_history: list[MessageEvent], relavant_memories:dict[str, list[str]],**kargs):
+    def _prompt_memory(self,relavant_memories:dict[str, list[str]],**kargs):
+        if relavant_memories == {}:
+            return ""
         # prompt = f"<Memory>这使你回忆起了以下事件:"
         # for key in relevant_memories:
-        #     prompt += f"{key}:"
+        #     prompt += f"<MemoryItem>{key}:"
         #     for value in relevant_memories[key]:
         #         prompt += f"{value};"
+        #     prompt += "</MemoryItem>"
         # prompt += "</Memory>"
         prompt = ""
         return prompt

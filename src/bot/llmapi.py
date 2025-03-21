@@ -1,6 +1,8 @@
 import base64
+import json
 from openai import OpenAI
-
+from .config import global_config
+from ..event import MessageEvent
 class llmApi:
     """
     处理与llm交互
@@ -9,6 +11,7 @@ class llmApi:
         self.client = OpenAI(api_key=settings["api_key"],base_url=settings["base_url"])
         self.chat_model = settings["chat_model"]
         self.image_model = settings["image_model"]
+        self.semantic_analysis_model = settings["semantic_analysis_model"]
         self.stream = settings["stream"]
 
     def send_request_text(self,prompt:str) -> str:
@@ -57,11 +60,48 @@ class llmApi:
         )
         return response.choices[0].message.content
 
+    def semantic_analysis(self,messageEvent:MessageEvent,chat_history:list[MessageEvent]) -> dict:
+        prompt = f"""<information>{global_config.bot_config['personality']}，你的网名是{global_config.bot_config['nickname']}<information>"""
+
+        prompt += f"""<ChatHistory>你正在{"群聊" if messageEvent.is_group() else "私聊"}里聊天,最近的聊天上下文如下（最先发的在前）:"""
+        for msg in chat_history:
+            prompt += f"**昵称**为{msg.sender.nickname}的人说：{msg.get_plaintext()};"
+        prompt += f"""</ChatHistory>"""
+        prompt += f"<CurrentMessage>现在**昵称**为{messageEvent.sender.nickname}的人说：{messageEvent.get_plaintext()}</CurrentMessage>"
+        prompt += f"<Requirement>现在请你根据<ChatHistory>和<CurrentMessage>标签标出的内容,分析出以下信息："
+
+        prompt += f"""1. **CurrentMessage** 的 **关键词** (**五个词左右**)"""
+        prompt += f"""2. **ChatHistory** 的 **主题** (**两个词左右**)"""
+        prompt += f"""3. 听到这些对话后, **你** 的情感 (**一个准确的词语**)(注意,要表达的是 **你自己的情感**)"""
+        prompt += f"""4. 根据关键词,主题,情感等,生成 **ChatHistory** 的 **摘要** (**一个简短的句子**)"""
+
+        prompt += f"""并打包为一个 json 发给我,json 格式如下:"""
+
+        prompt += f"""{{"keywords": ["关键词1","关键词2","关键词3","关键词4","关键词5"],"topic": ["主题 1","主题 2"],"emotion": "情感","summary": "摘要"}}"""
+
+        prompt += f"""</Requirement>"""
+
+        response = self.client.chat.completions.create(
+            model=self.chat_model,
+            messages=[
+                {"role": "user", "content": prompt},
+            ],
+            stream=self.stream,
+            response_format={"type": "json_object"}
+        )
+
+        if self.stream:
+            resp = ""
+            for chunk in response:
+                resp += chunk.choices[0].delta.content
+        else:
+            resp = response.choices[0].message.content
+        return json.loads(resp)
+
 if __name__ == "__main__":
     def encode_image(image_path):
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
-    from config import global_config
     llmapi = llmApi(global_config.gpt_settings)
     img_base64 = encode_image("/Users/xuyitian/Downloads/avatar.jpeg")
     print(llmapi.send_request_image("请用几个词描述这张图片",img_base64))

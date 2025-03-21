@@ -21,6 +21,7 @@ class Config:
         "base_url": "https://api.siliconflow.cn/v1",
         "chat_model": "deepseek-ai/DeepSeek-V3",
         "image_model": "Qwen/Qwen2-VL-72B-Instruct",
+        "semantic_analysis_model": "Qwen/Qwen2-7B-Instruct",
         "stream": False,
     }
 
@@ -30,7 +31,8 @@ class Config:
     }
 
     group_talk_allowed = [
-        244847198,
+        # 244847198,
+        1040847329,
     ]
 
     time_zone = +15   # UTC+8
