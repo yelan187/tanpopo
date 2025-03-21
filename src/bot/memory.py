@@ -5,7 +5,7 @@ import numpy as np
 import faiss
 
 from .database import Database
-from .llmapi import llmApi
+from .llmapi import LLMAPI
 from .config import global_config
 from .logger import register_logger
 
@@ -23,7 +23,7 @@ class Memory():
         self.started = False
         self.task = None
         self.lock = asyncio.Lock()
-        self.llm_api = llmApi(global_config.gpt_settings)
+        self.llm_api = LLMAPI(global_config.gpt_settings)
         self.dim = dim
         self.query_faiss_k = query_faiss_k
         self.reranking_k = reranking_k

@@ -109,7 +109,8 @@ class MemeManager:
         raw = self.db.fetch_filename()
         if raw is None:
             before_files = []
-        before_files = [x[0] for x in raw]
+        else:
+            before_files = [x[0] for x in raw]
         for url in urls:
             filename = await self.download_and_save_image(url)
             filename = filename[4:]#remove prefix
@@ -120,7 +121,7 @@ class MemeManager:
 
     def get_meme(self)->str:
         files = self.db.fetch_filename()
-        if files is None:
+        if files is None or len(files) == 0:
             return ""
         else:
             return self.encode_image("img/"+random.choice(files)[0])

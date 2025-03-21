@@ -1,14 +1,19 @@
+import sys
+import os
 import asyncio
 from datetime import datetime
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from src.bot.database import Database
 from src.bot.config import global_config
-from src.bot.llmapi import llmApi
+from src.bot.llmapi import LLMAPI
 
 # 模拟 Memory 类，用于在数据库中插入记忆项
 class Memory:
     def __init__(self):
         self.db = Database(global_config.database_config['database_name'], global_config.database_config['uri'])
-        self.llm_api = llmApi(global_config.gpt_settings)
+        self.llm_api = LLMAPI(global_config.gpt_settings)
 
     def insert_initial_memories(self):
         self.db.delete_many(global_config.memory_config['memory_table_name'], {})

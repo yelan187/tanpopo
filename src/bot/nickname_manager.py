@@ -1,7 +1,7 @@
 from .logger import register_logger
 from ..event import MessageEvent, Sender
 
-logger = register_logger("nickname_manager")
+logger = register_logger("nickname manager")
 
 class NicknameManager:
     def __init__(self):
@@ -13,7 +13,7 @@ class NicknameManager:
     
     def update_after_recv(self, messageEvent:MessageEvent) -> None:
         self.known_after_recv(messageEvent)
-        if messageEvent.at_list!=[]:
+        if isinstance(messageEvent.at_list,list) and messageEvent.at_list!=[]:
             tmp = ["全体成员"] if messageEvent.at_list[0]=="all" else []
             for i in messageEvent.at_list:
                 if i in self.id_nickname.keys():
