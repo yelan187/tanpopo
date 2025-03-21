@@ -23,6 +23,7 @@ class Config:
         "chat_model": "deepseek-ai/DeepSeek-V3",
         "image_model": "Qwen/Qwen2-VL-72B-Instruct",
         "semantic_analysis_model": "Qwen/Qwen2-7B-Instruct",
+        "embedding_model":"BAAI/bge-large-zh-v1.5",
         "stream": False,
     }
 

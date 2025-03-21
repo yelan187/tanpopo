@@ -29,7 +29,7 @@ class Bot:
         self.memory = Memory()
         self.ws = ws
 
-    async def handle_message(self, messageEvent:MessageEvent) -> list[str]:
+    async def handle_message(self, messageEvent:MessageEvent):
         """
         消息处理函数
         Args:
