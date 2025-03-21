@@ -32,26 +32,34 @@ class Bot:
         Args:
             message (MessageEvent): 消息事件
         """
-        logger.info(f"收到来自{'群' if messageEvent.is_group() else '私聊'}{messageEvent.get_id()}的消息->{messageEvent.get_plaintext()}")
-        self.message_manager.push_message(messageEvent.get_id(),False,messageEvent)
-        chat_history = self.message_manager.get_all_messages(messageEvent.get_id(),messageEvent.is_private())
-        
-        if messageEvent.is_tome():
-            routine = self.schedule_generator.get_current_task()
-            analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
-            relavant_memories = self.memory.recall(analysis_result.get('keywords'))
-            prompt = self.prompt_builder.build_prompt(messageEvent,chat_history,relavant_memories,routine)
-            logger.debug(f"构建prompt->{prompt}")
-            raw_resp = self.llm_api.send_request_text(prompt) 
-            resp = raw_resp.split("。")
-            for part in resp:
-                if part=="":
-                    continue
-                logger.info(f"bot回复->{part}")
-                time.sleep(len(part)//2)
-                await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
-        else:
-            return []
+        # key_words = self.llm_api.get_keywords(messageEvent)
+        # emotion = self.llm_api.get_emotion(messageEvent)
+        # relavant_memories = self.memory.recall(messageEvent,key_words)
+        if messageEvent.is_group():
+            logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
+            self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
+            if messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.3:
+                # relavant_memories = self.memory.recall(messageEvent)
+                relavant_memories = None
+                chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
+                routine = self.schedule_generator.get_current_task()
+                prompt = self.prompt_builder.build_prompt(
+                    current_message = messageEvent,
+                    chat_history = chat_history,
+                    relavant_memories = relavant_memories,
+                    routine = routine,
+                )
+                logger.debug(f"构建prompt->{prompt}")
+                raw_resp = self.llm_api.send_request_text(prompt) 
+                resp = raw_resp.split("。")
+                for part in resp:
+                    if part=="":
+                        continue
+                    logger.info(f"bot回复->{part}")
+                    time.sleep(len(part)//2)
+                    await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
+            else:
+                return []
             
     def wrap_message(self, message_type, id, message: str) -> str:
         tmp = {
