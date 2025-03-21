@@ -35,7 +35,7 @@ class Bot:
         if messageEvent.is_group():
             logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
-            if messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.6:
+            if messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.3:
                 # relavant_memories = self.memory.recall(messageEvent)
                 relavant_memories = None
                 chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
