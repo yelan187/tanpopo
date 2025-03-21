@@ -1,6 +1,10 @@
 import base64
 import json
+
+import numpy as np
+import requests
 from openai import OpenAI
+
 from .config import global_config
 from ..event import MessageEvent
 class llmApi:
@@ -9,9 +13,11 @@ class llmApi:
     """
     def __init__(self,settings:dict):
         self.client = OpenAI(api_key=settings["api_key"],base_url=settings["base_url"])
+        self.base_url = settings["base_url"]
         self.chat_model = settings["chat_model"]
         self.image_model = settings["image_model"]
         self.semantic_analysis_model = settings["semantic_analysis_model"]
+        self.embedding_model = settings["embedding_model"]
         self.stream = settings["stream"]
 
     def send_request_text(self,prompt:str) -> str:
@@ -32,7 +38,7 @@ class llmApi:
             return resp
         else:
             return response.choices[0].message.content
-        
+
     def send_request_image(self,prompt:str,image_base64:str) -> str:
         """
         发送图片请求
@@ -96,6 +102,33 @@ class llmApi:
         else:
             resp = response.choices[0].message.content
         return json.loads(resp)
+
+    def send_request_embedding(self, text: str):
+        response = self.client.embeddings.create(
+            model=self.embedding_model,
+            input=text,
+            encoding_format="float",
+        )
+        return np.array(response.data[0].embedding,dtype=np.float32)
+
+    def send_request_rerank(self,query_string:str,documents:list[str]):
+        url = self.base_url + "/rerank"
+        payload = {
+            "model": self.embedding_model,
+            "query": query_string,
+            "documents": documents,
+            "top_n": 5,
+            "return_documents": False,
+            "max_chunks_per_doc": 1024,
+            "overlap_tokens": 80,
+        }
+        headers = {
+            "Authorization": "Bearer sk-phlbcwawejllfeldnbgxonvrpokfwoeahkdtfzzbjgekrafv",
+            "Content-Type": "application/json",
+        }
+        response = requests.request("POST", url, json=payload, headers=headers)
+        return response.json()
+
 
 if __name__ == "__main__":
     def encode_image(image_path):
