@@ -45,6 +45,8 @@ class Bot:
         if messageEvent.is_group():
             logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
+            willing = await self.willing_manager.get_current_willing()
+            logger.debug(f"当前回复意愿->{willing}")
             if messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.3:
                 
                 routine = self.schedule_generator.get_current_task()
