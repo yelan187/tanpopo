@@ -29,6 +29,10 @@ class Config:
         "nickname": "N0thing",
     }
 
+    group_talk_allowed = [
+        244847198,
+    ]
+
     log_level = "DEBUG"
 
 global_config = Config()
