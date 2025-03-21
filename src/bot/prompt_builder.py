@@ -1,6 +1,9 @@
 import time
 from ..event import MessageEvent
 from .config import global_config
+from .logger import register_logger
+
+logger = register_logger("prompt_builder")
 
 class promptBuilder:
     def __init__(self,enabled_prompts:list[str]):

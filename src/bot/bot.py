@@ -29,9 +29,9 @@ class Bot:
             message (MessageEvent): 消息事件
         """
         if messageEvent.is_group():
+            logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
             if messageEvent.is_tome():
-                logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
                 relavant_memories = self.memory.recall(messageEvent)
                 chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
                 routine = self.schedule_generator.get_current_task()
