@@ -33,6 +33,8 @@ class Config:
         244847198,
     ]
 
+    time_zone = +15   # UTC+8
+
     log_level = "DEBUG"
 
 global_config = Config()

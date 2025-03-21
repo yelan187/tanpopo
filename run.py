@@ -17,6 +17,6 @@ async def main(bot: Bot):
 if __name__ == '__main__':
     ws = WS(host='127.0.0.1', port=3001, role='client')
     
-    bot = Bot(ws=ws)
     logger.info('监听进程启动')
+    bot = Bot(ws=ws)
     asyncio.run(main(bot))

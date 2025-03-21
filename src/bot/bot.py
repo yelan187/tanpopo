@@ -35,7 +35,7 @@ class Bot:
         if messageEvent.is_group():
             logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
             self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
-            if messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.3:
+            if (messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.3) or messageEvent.is_tome():
                 # relavant_memories = self.memory.recall(messageEvent)
                 relavant_memories = None
                 chat_history = self.message_manager.get_all_messages(messageEvent.group_id,False)
@@ -72,3 +72,16 @@ class Bot:
             tmp['params']['group_id'] = id
 
         return json.dumps(tmp)
+    
+    def get_nickname_by_id(self, group_id, user_id, no_cache=False) -> str:
+        tmp = {
+                'action': 'get_group_member_info',
+                'params': {
+                    'group_id': group_id,
+                    'user_id': user_id,
+                    'no_cache': no_cache
+                }
+            }
+        self.ws.send(json.dumps(tmp))
+        res = self.ws.recv()
+        print(res)
