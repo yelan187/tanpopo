@@ -21,6 +21,7 @@ class Config:
         "base_url": "https://api.siliconflow.cn/v1",
         "chat_model": "deepseek-ai/DeepSeek-V3",
         "image_model": "Qwen/Qwen2-VL-72B-Instruct",
+        "semantic_analysis_model": "Qwen/Qwen2-7B-Instruct",
         "stream": False,
     }
 
