@@ -35,7 +35,7 @@ class Config:
         1040847329,
     ]
 
-    time_zone = +15   # UTC+8
+    time_zone = +8   # UTC+8
 
     log_level = "DEBUG"
 

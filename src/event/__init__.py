@@ -15,7 +15,6 @@ class MessageEvent:
 
     def __call__(self, messageEvent: str):
         messageEvent = json.loads(messageEvent)
-        print(messageEvent)
         if messageEvent.get('post_type') != 'message':
             return None
         else:
