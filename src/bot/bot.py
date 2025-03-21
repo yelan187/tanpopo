@@ -7,6 +7,7 @@ import asyncio
 import jieba
 import jieba.analyse
 
+from .database import Database
 from ..event import MessageEvent
 from .prompt_builder import promptBuilder
 from .message_buffer import MessageManager
@@ -27,7 +28,11 @@ class Bot:
         self.message_manager = MessageManager()
         self.schedule_generator = scheduleGenerator()
         self.willing_manager = WillingManager()
-        asyncio.create_task(self.willing_manager.start_regression_task())
+        asyncio.create_task(
+            self.willing_manager.start_regression_task(),
+            self.memory.start_building_task()
+            )
+        self.db = Database(global_config.database_config["database_name"],global_config.database_config["uri"])
         self.memory = Memory()
         self.ws = ws
 
@@ -46,8 +51,8 @@ class Bot:
                 await self.willing_manager.change_willing_after_send()
                 routine = self.schedule_generator.get_current_task()
                 analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
-                relavant_memories = self.memory.recall(analysis_result.get("keywords"))
-                
+                relavant_memories = self.memory.recall(analysis_result.get("keywords"),analysis_result.get("summary"))
+                logger.debug(f"当前上下文摘要->{analysis_result.get('summary')}")
                 prompt = self.prompt_builder.build_prompt(
                     current_message = messageEvent,
                     chat_history = chat_history,
