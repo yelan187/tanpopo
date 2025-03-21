@@ -23,7 +23,7 @@ class MessageManager:
                 self.group_buffers[idd] = deque(maxlen=self.max_size)
             self.group_buffers[idd].append(message)
 
-    def get_all_messages(self,idd: str,is_private:bool) -> list[MessageEvent]:
+    def get_all_messages(self,idd: int,is_private:bool) -> list[MessageEvent]:
         """获取指定群聊/私聊缓存的所有消息"""
         if is_private:
             if idd in self.private_buffers:
