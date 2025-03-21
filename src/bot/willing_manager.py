@@ -2,12 +2,14 @@ import asyncio
 
 from .logger import register_logger
 from ..event import MessageEvent
+from .config import global_config
 
 logger = register_logger("willing_manager")
 
+
 class WillingManager:
     def __init__(self):
-        self.current_willing = 0.5  # 当前回复意愿
+        self.current_willing: dict[int, float] = {}  # 当前回复意愿
         self.started = False  # 是否已启动
         self.task = None  # 异步任务
         self.lock = asyncio.Lock()  # 用于线程安全的锁
@@ -19,8 +21,8 @@ class WillingManager:
         while True:
             await asyncio.sleep(10)  # 每 10 秒更新一次
             async with self.lock:  # 确保线程安全
-                self.current_willing += (0.4 - self.current_willing) / 15
-                logger.debug(f"当前回复意愿 -> {self.current_willing:.2f}")
+                for idd in self.current_willing.keys():
+                    self.current_willing[idd] += (0.5 - self.current_willing[idd]) / 10
 
     async def start_regression_task(self):
         """
@@ -31,30 +33,47 @@ class WillingManager:
             self.task = asyncio.create_task(self.regress_willing())
             logger.info("意愿衰减任务已启动")
 
-    async def get_current_willing(self):
+    async def get_current_willing(self, idd: int):
         """
         获取当前回复意愿。
-
-        :return: 当前回复意愿值
+        Args
+            idd: 用户ID
+        return: 当前回复意愿值
         """
         async with self.lock:  # 确保线程安全
-            return self.current_willing
-    
-    async def change_willing_after_send(self):
+            willing = self.current_willing[idd]
+            logger.debug(f"当前群{idd}的回复意愿为{willing}")
+            return willing
+
+    async def change_willing_after_send(self, idd: int,send:bool):
         """
         事件触发后改变回复意愿。
 
         :param dicide_send: 是否发送消息
         """
         async with self.lock:  # 确保线程安全
-            self.current_willing = max(0, self.current_willing - 0.4)
-            logger.debug(f"回复意愿减少到 -> {self.current_willing:.2f}")
+            if send:
+                self.current_willing[idd] = max(0, self.current_willing[idd] - 0.1)
 
-    async def change_willing_after_receive(self,message: MessageEvent):
+    async def change_willing_after_receive(self, message: MessageEvent):
         """
         事件触发后改变回复意愿。
         """
         if message.is_tome:
-            async with self.lock:
-                self.current_willing = min(1, self.current_willing + 0.5)
-                logger.debug(f"回复意愿增加到 -> {self.current_willing:.2f}")
+            increase = 0.5
+        elif global_config.bot_config["nickname"] in message.get_plaintext():
+            increase = 0.2
+        else:
+            increase = 0
+        idd = message.group_id if message.is_group() else message.user_id
+        async with self.lock:  # 确保线程安全
+            if self.current_willing.get(idd,None) is None:
+                self.current_willing[idd] = 0.5
+            self.current_willing[idd] = min(1, self.current_willing[idd] + increase)
+            willing = self.current_willing[idd]
+            logger.debug(f"当前群{idd}的回复意愿为{willing}")
+            return willing
+        
+    async def change_willing_if_thinking(self,idd):
+        async with self.lock:
+            self.current_willing[idd] = max(0, self.current_willing[idd] - 0.3)

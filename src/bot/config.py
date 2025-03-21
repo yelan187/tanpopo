@@ -23,6 +23,7 @@ class Config:
         "chat_model": "deepseek-ai/DeepSeek-V3",
         "image_model": "Qwen/Qwen2-VL-72B-Instruct",
         "semantic_analysis_model": "Qwen/Qwen2-7B-Instruct",
+        "embedding_model":"BAAI/bge-large-zh-v1.5",
         "stream": False,
     }
 
@@ -35,6 +36,19 @@ class Config:
         244847198,
         1040847329,
     ]
+
+    memory_config = {
+        "memory_table_name": "memory",
+        "build_interval": 60,
+        "embedding_dim": 1024,
+        "query_faiss_k": 10,
+        "reranking_k": 5
+    }
+
+    database_config = {
+        "uri": "mongodb://localhost:27017/",
+        "database_name":"tanpopo"
+    }
 
     time_zone = timezone(timedelta(hours=+8))   # UTC+8
 

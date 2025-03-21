@@ -1,18 +1,17 @@
 import json
-import time
-import datetime
 import random
 import asyncio
 
 import jieba
 import jieba.analyse
 
-from ..event import MessageEvent,Message
+from .database import Database
+from ..event import MessageEvent
 from .prompt_builder import promptBuilder
 from .message_buffer import MessageManager
 from .llmapi import llmApi
 from .config import global_config
-from .memory import Memory
+from .memory import Memory,MemoryPiece
 from .schedule_generator import scheduleGenerator
 from .nickname_manager import NicknameManager
 from .willing_manager import WillingManager
@@ -29,11 +28,14 @@ class Bot:
         self.schedule_generator = scheduleGenerator()
         self.willing_manager = WillingManager()
         self.nickname_manager = NicknameManager()
+        self.memory = Memory(self)
         asyncio.create_task(self.willing_manager.start_regression_task())
-        self.memory = Memory()
+        asyncio.create_task(self.memory.start_building_task())
+
+        self.db = Database(global_config.database_config["database_name"],global_config.database_config["uri"])
         self.ws = ws
 
-    async def handle_message(self, messageEvent:MessageEvent) -> list[str]:
+    async def handle_message(self, messageEvent:MessageEvent):
         """
         消息处理函数
         Args:
@@ -43,14 +45,15 @@ class Bot:
         self.message_manager.push_message(messageEvent.get_id(),messageEvent.is_private(),messageEvent)
         chat_history = self.message_manager.get_all_messages(messageEvent.get_id(),messageEvent.is_private())
         if messageEvent.is_group():
-            await self.willing_manager.change_willing_after_receive(messageEvent)#收到消息时更新回复意愿
-            willing = await self.willing_manager.get_current_willing()
             self.nickname_manager.update_after_recv(messageEvent)
+            willing = await self.willing_manager.change_willing_after_receive(messageEvent)#收到消息时更新回复意愿
             if messageEvent.group_id in global_config.group_talk_allowed and random.random() < willing:
+                await self.willing_manager.change_willing_if_thinking(messageEvent.group_id)
                 routine = self.schedule_generator.get_current_task()
                 analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
-                relavant_memories = self.memory.recall(analysis_result.get("keywords"))
-
+                relavant_memories = self.memory.recall(analysis_result.get("keywords"),analysis_result.get("summary"))
+                logger.debug(f"当前上下文摘要->{analysis_result.get('summary')}")
+                
                 prompt = self.prompt_builder.build_prompt(
                     current_message = messageEvent,
                     chat_history = chat_history,
@@ -65,8 +68,7 @@ class Bot:
                     if part=="":
                         continue
                     logger.info(f"bot回复->{part}")
-                    time.sleep(len(part)//2)
-                    await self.willing_manager.change_willing_after_send()#发消息后更新回复意愿
+                    await asyncio.sleep(len(part)//2)
                     await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
                     self.push_bot_msg(messageEvent,part)
             else:

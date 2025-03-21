@@ -1,6 +1,10 @@
 import base64
 import json
+
+import numpy as np
+import requests
 from openai import OpenAI
+
 from .config import global_config
 from ..event import MessageEvent
 class llmApi:
@@ -9,9 +13,11 @@ class llmApi:
     """
     def __init__(self,settings:dict):
         self.client = OpenAI(api_key=settings["api_key"],base_url=settings["base_url"])
+        self.base_url = settings["base_url"]
         self.chat_model = settings["chat_model"]
         self.image_model = settings["image_model"]
         self.semantic_analysis_model = settings["semantic_analysis_model"]
+        self.embedding_model = settings["embedding_model"]
         self.stream = settings["stream"]
 
     def send_request_text(self,prompt:str) -> str:
@@ -32,7 +38,7 @@ class llmApi:
             return resp
         else:
             return response.choices[0].message.content
-        
+
     def send_request_image(self,prompt:str,image_base64:str) -> str:
         """
         发送图片请求
@@ -71,13 +77,12 @@ class llmApi:
         prompt += f"<Requirement>现在请你根据<ChatHistory>和<CurrentMessage>标签标出的内容,分析出以下信息："
 
         prompt += f"""1. **CurrentMessage** 的 **关键词** (**五个词左右**)"""
-        prompt += f"""2. **ChatHistory** 的 **主题** (**两个词左右**)"""
-        prompt += f"""3. 听到这些对话后, **你** 的情感 (**一个准确的词语**)(注意,要表达的是 **你自己的情感**)"""
-        prompt += f"""4. 根据关键词,主题,情感等,生成 **ChatHistory** 的 **摘要** (**一个简短的句子**)"""
+        prompt += f"""2. 听到这些对话后, **你** 的情感 (**一个准确的词语**)(注意,要表达的是 **你自己的情感**)"""
+        prompt += f"""3. 根据关键词,主题,情感等,生成 **ChatHistory** 的 **摘要** (**一个简短的句子**)"""
 
         prompt += f"""并打包为一个 json 发给我,json 格式如下:"""
 
-        prompt += f"""{{"keywords": ["关键词1","关键词2","关键词3","关键词4","关键词5"],"topic": ["主题 1","主题 2"],"emotion": "情感","summary": "摘要"}}"""
+        prompt += f"""{{"keywords": ["关键词1","关键词2","关键词3","关键词4","关键词5"],"emotion": "情感","summary": "摘要"}}"""
 
         prompt += f"""</Requirement>"""
 
@@ -97,6 +102,33 @@ class llmApi:
         else:
             resp = response.choices[0].message.content
         return json.loads(resp)
+
+    def send_request_embedding(self, text: str):
+        response = self.client.embeddings.create(
+            model=self.embedding_model,
+            input=text,
+            encoding_format="float",
+        )
+        return np.array(response.data[0].embedding,dtype=np.float32)
+
+    def send_request_rerank(self,query_string:str,documents:list[str]):
+        url = self.base_url + "/rerank"
+        payload = {
+            "model": self.embedding_model,
+            "query": query_string,
+            "documents": documents,
+            "top_n": 5,
+            "return_documents": False,
+            "max_chunks_per_doc": 1024,
+            "overlap_tokens": 80,
+        }
+        headers = {
+            "Authorization": "Bearer sk-phlbcwawejllfeldnbgxonvrpokfwoeahkdtfzzbjgekrafv",
+            "Content-Type": "application/json",
+        }
+        response = requests.request("POST", url, json=payload, headers=headers)
+        return response.json()
+
 
 if __name__ == "__main__":
     def encode_image(image_path):
