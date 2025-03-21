@@ -54,7 +54,7 @@ class WillingManager:
         """
         事件触发后改变回复意愿。
         """
-        if message.is_tome():
+        if message.is_tome:
             async with self.lock:
                 self.current_willing = min(1, self.current_willing + 0.5)
                 logger.debug(f"回复意愿增加到 -> {self.current_willing:.2f}")

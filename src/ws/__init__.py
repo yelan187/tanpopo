@@ -1,4 +1,5 @@
 import websockets
+import json
 from ..event import MessageEvent
 
 class WS:
@@ -19,9 +20,11 @@ class WS:
 
     async def on_message(self, websocket):
         async for message in websocket:
-            messageEvent = MessageEvent()
-            return messageEvent(message)
-    
+            message = json.loads(message)
+            if message.get('post_type') != 'message':
+                return None
+            return MessageEvent(message)
+
     async def send(self, message):
         if self.ws:
             await self.ws.send(message)
@@ -29,9 +32,11 @@ class WS:
     async def recv(self):
         if self.ws:
             message = await self.ws.recv()
-            messageEvent = MessageEvent()
-            return messageEvent(message)
-
+            message = json.loads(message)
+            if message.get('post_type') != 'message':
+                return None
+            return MessageEvent(message)
+        
     async def close(self):
         if self.ws:
             await self.ws.close()
