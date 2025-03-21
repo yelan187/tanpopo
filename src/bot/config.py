@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import timezone, timedelta
 
 @dataclass
 class Config:
@@ -35,7 +36,7 @@ class Config:
         1040847329,
     ]
 
-    time_zone = +8   # UTC+8
+    time_zone = timezone(timedelta(hours=+8))   # UTC+8
 
     log_level = "DEBUG"
 

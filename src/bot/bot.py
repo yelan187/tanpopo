@@ -22,7 +22,7 @@ logger = register_logger("bot",global_config.log_level)
 
 class Bot:
     def __init__(self,ws:WS):
-        self.prompt_builder =promptBuilder(global_config.enabled_prompts)
+        self.prompt_builder = promptBuilder(global_config.enabled_prompts)
         self.llm_api = llmApi(global_config.gpt_settings)
         self.message_manager = MessageManager()
         self.schedule_generator = scheduleGenerator()

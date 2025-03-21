@@ -1,4 +1,4 @@
-import time
+from datetime import datetime
 from ..event import MessageEvent
 from .config import global_config
 from .logger import register_logger
@@ -24,8 +24,8 @@ class promptBuilder:
         return f"<information>{global_config.bot_config['personality']}，你的网名是{global_config.bot_config['nickname']}</information>"
 
     def _prompt_time(self, **kargs):
-        current_date = time.strftime("%Y-%m-%d", time.localtime())
-        current_time = time.strftime("%H:%M:%S", time.localtime())
+        current_date = datetime.now(global_config.time_zone).strftime("%Y-%m-%d")
+        current_time =  datetime.now(global_config.time_zone).strftime("%H:%M:%S")
         return f"<time>今天是{current_date}，现在是{current_time}</time>"
 
     def _prompt_basic(self, **kargs):
