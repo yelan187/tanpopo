@@ -2,12 +2,11 @@ import websockets
 from ..event import MessageEvent
 
 class WS:
-    def __init__(self, host, port, role='client', callback=None):
+    def __init__(self, host, port, role='client'):
         self.host = host
         self.port = port
         self.role = role
         self.url = f"ws://{self.host}:{self.port}/"
-        self.message_callback = callback
         self.ws = None
 
     async def connect(self):
@@ -20,8 +19,8 @@ class WS:
 
     async def on_message(self, websocket):
         async for message in websocket:
-            if self.message_callback:
-                self.message_callback(message)
+            messageEvent = MessageEvent()
+            return messageEvent(message)
     
     async def send(self, message):
         if self.ws:
@@ -32,7 +31,6 @@ class WS:
             message = await self.ws.recv()
             messageEvent = MessageEvent()
             return messageEvent(message)
-
 
     async def close(self):
         if self.ws:

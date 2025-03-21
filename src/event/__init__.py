@@ -1,38 +1,30 @@
 import json
 
-def build(obj, json):
-    for key,value in json.items():
-        value = value if value != "" else None
-        if key in obj.rules:
-            if key == 'message':
-                messageobj = Message(value)
-                setattr(obj, key, messageobj)
-            elif isinstance(value, dict):
-                sub_obj = globals()[key[0].upper() + key[1:]]()
-                build(sub_obj, value)
-                setattr(obj, key, sub_obj)
-            else:
-                setattr(obj, key, value)
-
 class MessageEvent:
-    def __init__(self,rules = None):
-        self.rules = [
-            "self_id",
-            "user_id",
-            "message_id",
-            "sender",
-            "message",
-            "message_type",
-            "group_id",
-            "raw_message"
-        ] if rules == None else rules
+    def __init__(self, self_id=None, user_id=None, message_id=None, sender=None, message=None, message_type=None, group_id=None, raw_message=None):
+        self.self_id = self_id
+        self.user_id = user_id
+        self.message_id = message_id
+        self.sender = sender
+        self.message = message
+        self.message_type = message_type
+        self.group_id = group_id
+        self.raw_message = raw_message
 
     def __call__(self, messageEvent: str):
         messageEvent = json.loads(messageEvent)
         if messageEvent.get('post_type') != 'message':
             return None
         else:
-            build(self,messageEvent)
+            # 直接设置属性
+            self.self_id = messageEvent.get('self_id')
+            self.user_id = messageEvent.get('user_id')
+            self.message_id = messageEvent.get('message_id')
+            self.sender = Sender(messageEvent.get('sender'))
+            self.message = Message(messageEvent.get('message'))
+            self.message_type = messageEvent.get('message_type')
+            self.group_id = messageEvent.get('group_id')
+            self.raw_message = messageEvent.get('raw_message')
             return self
 
     def is_group(self):
@@ -50,22 +42,23 @@ class MessageEvent:
                 return True
         return False
 
+    def get_id(self):
+        return self.user_id if self.is_private() else self.group_id
+
+
 class Segment:
-    def __init__(self,segment):
-        self.type = segment.get('type')
-        self.data = segment.get('data')
-        # print(self.data,self.type)
+    def __init__(self, type=None, data=None):
+        self.type = type
+        self.data = data
+
 
 class Sender:
-    def __init__(self,rules = None):
-        self.rules = [
-            "user_id",
-            "nickname",
-            "card"
-        ] if rules == None else rules
+    def __init__(self, data=None):
+        self.user_id = data.get('user_id')
+        self.nickname = data.get('nickname')
+        self.card = data.get('card')
+
 
 class Message:
-    def __init__(self,segments):
-        self.segments = [Segment(segment) for segment in segments]
-
-    
+    def __init__(self, segments=None):
+        self.segments = [Segment(**segment) for segment in segments] if segments else []
