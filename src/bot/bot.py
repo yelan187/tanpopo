@@ -37,18 +37,13 @@ class Bot:
         Args:
             message (MessageEvent): 消息事件
         """
-        logger.info(f"收到来自{'群聊' if messageEvent.is_group() else '私聊'}的消息->{messageEvent.get_plaintext()}")
-        
+        logger.info(f"收到来自{'群聊'+str(messageEvent.group_id) if messageEvent.is_group() else '私聊'}的消息->{messageEvent.get_plaintext()}")
         self.message_manager.push_message(messageEvent.get_id(),messageEvent.is_private(),messageEvent)
         chat_history = self.message_manager.get_all_messages(messageEvent.get_id(),messageEvent.is_private())
-
         if messageEvent.is_group():
-            logger.info(f"收到来自群{messageEvent.group_id}的消息->{messageEvent.get_plaintext()}")
-            self.message_manager.push_message(messageEvent.group_id,False,messageEvent)
             willing = await self.willing_manager.get_current_willing()
-            logger.debug(f"当前回复意愿->{willing}")
-            if messageEvent.group_id in global_config.group_talk_allowed and random.random() < 0.3:
-                
+            if messageEvent.group_id in global_config.group_talk_allowed and random.random() < willing:
+                await self.willing_manager.change_willing_after_send()
                 routine = self.schedule_generator.get_current_task()
                 analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
                 relavant_memories = self.memory.recall(analysis_result.get("keywords"))
@@ -70,6 +65,7 @@ class Bot:
                     time.sleep(len(part)//2)
                     await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
             else:
+                logger.info(f"bot选择不回复")
                 return []
             
     def wrap_message(self, message_type, id, message: str) -> str:
