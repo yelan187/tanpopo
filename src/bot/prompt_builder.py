@@ -3,18 +3,19 @@ from ..event import MessageEvent
 from .config import global_config
 from .logger import register_logger
 
-logger = register_logger("prompt_builder")
+logger = register_logger("prompt builder")
 
-class promptBuilder:
-    def __init__(self,enabled_prompts:list[str]):
+
+class PromptBuilder:
+    def __init__(self, enabled_prompts: list[str]):
         # 注册所有prompt函数
         self.prompt_list = []
         for name in enabled_prompts:
-            func = getattr(self,f"_prompt_{name}",None)
+            func = getattr(self, f"_prompt_{name}", None)
             if func:
                 self.prompt_list.append(func)
 
-    def build_prompt(self,**kargs) -> str:
+    def build_prompt(self, **kargs) -> str:
         prompt = ""
         for func in self.prompt_list:
             prompt += func(**kargs)
@@ -25,7 +26,7 @@ class promptBuilder:
 
     def _prompt_time(self, **kargs):
         current_date = datetime.now(global_config.time_zone).strftime("%Y-%m-%d")
-        current_time =  datetime.now(global_config.time_zone).strftime("%H:%M:%S")
+        current_time = datetime.now(global_config.time_zone).strftime("%H:%M:%S")
         return f"<time>今天是{current_date}，现在是{current_time}</time>"
 
     def _prompt_basic(self, **kargs):
@@ -33,8 +34,10 @@ class promptBuilder:
 
     def _prompt_current_msg(self, current_message: MessageEvent, **kargs):
         return f"<CurrentMessage>刚才,昵称为`{current_message.sender.nickname}`的用户说：`{current_message.get_plaintext()}`，这引起了你的注意</CurrentMessage>"
-    
-    def _prompt_chat_history(self, current_message: MessageEvent, chat_history: list[MessageEvent],**kargs):
+
+    def _prompt_chat_history(
+        self, current_message: MessageEvent, chat_history: list[MessageEvent], **kargs
+    ):
         if len(chat_history) == 0:
             return ""
         is_private = current_message.is_private()
@@ -43,11 +46,11 @@ class promptBuilder:
             prompt += f"**昵称**为{msg.sender.nickname}的人说：{msg.get_plaintext()};"
         prompt += "</ChatHistory>"
         return prompt
-    
-    def _prompt_schedule(self,routine:str,**kargs):
+
+    def _prompt_schedule(self, routine: str, **kargs):
         return f"<schedule>根据你的日程，你现在正在{routine}</schedule>"
-    
-    def _prompt_memory(self,relavant_memories:dict[str, list[str]],**kargs):
+
+    def _prompt_memory(self, relavant_memories: dict[str, list[str]], **kargs):
         if relavant_memories == {}:
             return ""
         # prompt = f"<Memory>这使你回忆起了以下事件:"
@@ -59,4 +62,3 @@ class promptBuilder:
         # prompt += "</Memory>"
         prompt = ""
         return prompt
-    

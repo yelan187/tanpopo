@@ -4,7 +4,7 @@ from .logger import register_logger
 from ..event import MessageEvent
 from .config import global_config
 
-logger = register_logger("willing_manager")
+logger = register_logger("willing manager")
 
 
 class WillingManager:

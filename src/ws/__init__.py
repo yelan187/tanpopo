@@ -1,5 +1,11 @@
+import json
+
 import websockets
 from ..event import MessageEvent
+from ..bot.logger import register_logger
+from ..bot.config import global_config
+
+logger = register_logger("ws",global_config.log_level)
 
 class WS:
     def __init__(self, host, port, role='client'):
@@ -29,6 +35,7 @@ class WS:
     async def recv(self):
         if self.ws:
             message = await self.ws.recv()
+            # logger.debug(json.loads(message))
             messageEvent = MessageEvent()
             return messageEvent(message)
 

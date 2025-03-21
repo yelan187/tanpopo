@@ -3,7 +3,7 @@ from collections import deque
 from ..event import MessageEvent
 from .logger import register_logger
 
-logger = register_logger("message_manager")
+logger = register_logger("message manager")
 
 class MessageManager:
     def __init__(self, max_size: int=10):
@@ -13,7 +13,7 @@ class MessageManager:
 
     def push_message(self,idd: int,is_private:bool, message: MessageEvent):
         """向指定群聊/私聊添加一条消息"""
-        logger.debug(f"message pushed to {idd}: {message.get_plaintext()}")
+        logger.debug(f"消息添加到 {idd}: {message.get_plaintext()}")
         if is_private:
             if idd not in self.private_buffers:
                 self.private_buffers[idd] = deque(maxlen=self.max_size)

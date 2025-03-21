@@ -1,5 +1,6 @@
 test/
-
+img/
 __pycache__/
 
+image.db
 .DS_Store

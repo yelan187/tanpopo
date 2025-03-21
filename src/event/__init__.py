@@ -32,16 +32,29 @@ class MessageEvent:
 
     def is_group(self):
         return self.message_type == 'group'
-    
+
     def is_private(self):
         return self.message_type == 'private'
 
     def get_plaintext(self):
-        for segment in self.message.segments:
-            if segment.type == 'at' and segment.data.get('qq') != str(self.self_id):
-                pass
         return "".join([segment.data.get('text') for segment in self.message.segments if segment.type == 'text'])
 
+    def get_memes_url(self) -> list[str]:
+        """获取表情包url"""
+        result = []
+        for seg in self.message.segments:
+            if seg.type == "image" and int(seg.data.get("sub_type")) == 1:
+                result.append(seg.data.get("url"))
+        return result
+
+    def get_images_url(self) -> list[str]:
+        """获取图片url"""
+        result = []
+        for seg in self.message.segments:
+            if seg.type == "image" and int(seg.data.get("sub_type")) == 0:
+                result.append(seg.data.get("url"))
+        return result
+    
     def is_tome(self):
         for segment in self.message.segments:
             if segment.type == 'at' and (segment.data.get('qq') == 'all' or int(segment.data.get('qq')) == self.self_id):

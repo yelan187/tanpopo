@@ -7,12 +7,15 @@ from openai import OpenAI
 
 from .config import global_config
 from ..event import MessageEvent
-class llmApi:
+
+
+class LLMAPI:
     """
     处理与llm交互
     """
-    def __init__(self,settings:dict):
-        self.client = OpenAI(api_key=settings["api_key"],base_url=settings["base_url"])
+
+    def __init__(self, settings: dict):
+        self.client = OpenAI(api_key=settings["api_key"], base_url=settings["base_url"])
         self.base_url = settings["base_url"]
         self.chat_model = settings["chat_model"]
         self.image_model = settings["image_model"]
@@ -20,7 +23,7 @@ class llmApi:
         self.embedding_model = settings["embedding_model"]
         self.stream = settings["stream"]
 
-    def send_request_text(self,prompt:str) -> str:
+    def send_request_text(self, prompt: str) -> str:
         """
         发送文本请求
         """
@@ -29,7 +32,7 @@ class llmApi:
             messages=[
                 {"role": "user", "content": prompt},
             ],
-            stream=self.stream
+            stream=self.stream,
         )
         if self.stream:
             resp = ""
@@ -39,7 +42,7 @@ class llmApi:
         else:
             return response.choices[0].message.content
 
-    def send_request_image(self,prompt:str,image_base64:str) -> str:
+    def send_request_image(self, prompt: str, image_base64: str) -> str:
         """
         发送图片请求
         图片格式为base64编码的jpeg
@@ -50,23 +53,22 @@ class llmApi:
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "text",
-                            "text": prompt
-                        },
+                        {"type": "text", "text": prompt},
                         {
                             "type": "image_url",
                             "image_url": {
                                 "url": f"data:image/jpeg;base64,{image_base64}"
-                            }
-                        }
-                    ]
+                            },
+                        },
+                    ],
                 },
-            ]
+            ],
         )
         return response.choices[0].message.content
 
-    def semantic_analysis(self,messageEvent:MessageEvent,chat_history:list[MessageEvent]) -> dict:
+    def semantic_analysis(
+        self, messageEvent: MessageEvent, chat_history: list[MessageEvent]
+    ) -> dict:
         prompt = f"""<information>{global_config.bot_config['personality']}，你的网名是{global_config.bot_config['nickname']}<information>"""
 
         prompt += f"""<ChatHistory>你正在{"群聊" if messageEvent.is_group() else "私聊"}里聊天,最近的聊天上下文如下（最先发的在前）:"""
@@ -93,7 +95,7 @@ class llmApi:
                 {"role": "user", "content": prompt},
             ],
             stream=self.stream,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
 
         if self.stream:
@@ -110,9 +112,9 @@ class llmApi:
             input=text,
             encoding_format="float",
         )
-        return np.array(response.data[0].embedding,dtype=np.float32)
+        return np.array(response.data[0].embedding, dtype=np.float32)
 
-    def send_request_rerank(self,query_string:str,documents:list[str]):
+    def send_request_rerank(self, query_string: str, documents: list[str]):
         url = self.base_url + "/rerank"
         payload = {
             "model": self.embedding_model,
@@ -132,9 +134,11 @@ class llmApi:
 
 
 if __name__ == "__main__":
+
     def encode_image(image_path):
         with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
-    llmapi = llmApi(global_config.gpt_settings)
+            return base64.b64encode(image_file.read()).decode("utf-8")
+
+    llmapi = LLMAPI(global_config.gpt_settings)
     img_base64 = encode_image("/Users/xuyitian/Downloads/avatar.jpeg")
-    print(llmapi.send_request_image("请用几个词描述这张图片",img_base64))
+    print(llmapi.send_request_image("请用几个词描述这张图片", img_base64))
