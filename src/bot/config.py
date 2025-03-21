@@ -39,6 +39,10 @@ class Config:
 
     memory_config = {
         "memory_table_name": "memory",
+        "build_interval": 60,
+        "embedding_dim": 1024,
+        "query_faiss_k": 10,
+        "reranking_k": 5
     }
 
     database_config = {
