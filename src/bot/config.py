@@ -37,6 +37,19 @@ class Config:
         1040847329,
     ]
 
+    memory_config = {
+        "memory_table_name": "memory",
+        "build_interval": 60,
+        "embedding_dim": 1024,
+        "query_faiss_k": 10,
+        "reranking_k": 5
+    }
+
+    database_config = {
+        "uri": "mongodb://localhost:27017/",
+        "database_name":"tanpopo"
+    }
+
     time_zone = timezone(timedelta(hours=+8))   # UTC+8
 
     log_level = "DEBUG"

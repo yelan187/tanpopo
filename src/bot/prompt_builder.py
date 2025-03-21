@@ -2,6 +2,7 @@ from datetime import datetime
 from ..event import MessageEvent
 from .config import global_config
 from .logger import register_logger
+from .memory import MemoryPiece
 
 logger = register_logger("prompt builder")
 
@@ -49,16 +50,14 @@ class PromptBuilder:
 
     def _prompt_schedule(self, routine: str, **kargs):
         return f"<schedule>根据你的日程，你现在正在{routine}</schedule>"
-
-    def _prompt_memory(self, relavant_memories: dict[str, list[str]], **kargs):
+    
+    def _prompt_memory(self,relavant_memories:list[MemoryPiece],**kargs):
         if relavant_memories == {}:
             return ""
-        # prompt = f"<Memory>这使你回忆起了以下事件:"
-        # for key in relevant_memories:
-        #     prompt += f"<MemoryItem>{key}:"
-        #     for value in relevant_memories[key]:
-        #         prompt += f"{value};"
-        #     prompt += "</MemoryItem>"
-        # prompt += "</Memory>"
-        prompt = ""
+
+        prompt = f"<Memory>这使你回忆起了以下事件:"
+        for piece in relavant_memories:
+            prompt += f"<MemoryPiece>{piece.summary}</MemoryPiece>"
+        prompt += "</Memory>"
+
         return prompt

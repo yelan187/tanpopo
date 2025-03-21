@@ -4,3 +4,5 @@ __pycache__/
 
 image.db
 .DS_Store
+
+test*

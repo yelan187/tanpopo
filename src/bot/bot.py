@@ -5,13 +5,15 @@ import asyncio
 import jieba
 import jieba.analyse
 
+from .database import Database
 from ..event import MessageEvent
 from .prompt_builder import PromptBuilder
 from .message_buffer import MessageManager
 from .llmapi import LLMAPI
 from .config import global_config
-from .memory import Memory
+from .memory import Memory,MemoryPiece
 from .schedule_generator import ScheduleGenerator
+from .nickname_manager import NicknameManager
 from .willing_manager import WillingManager
 from .logger import register_logger
 from .image_manager import MemeManager
@@ -27,9 +29,13 @@ class Bot:
         self.message_manager = MessageManager()
         self.schedule_generator = ScheduleGenerator()
         self.willing_manager = WillingManager()
-        asyncio.create_task(self.willing_manager.start_regression_task())
+        self.nickname_manager = NicknameManager()
         self.meme_manager = MemeManager()
-        self.memory = Memory()
+        self.memory = Memory(self)
+        asyncio.create_task(self.willing_manager.start_regression_task())
+        asyncio.create_task(self.memory.start_building_task())
+
+        self.db = Database(global_config.database_config["database_name"],global_config.database_config["uri"])
         self.ws = ws
 
     async def handle_message(self, messageEvent: MessageEvent):
@@ -48,6 +54,7 @@ class Bot:
             messageEvent.get_id(), messageEvent.is_private()
         )
         if messageEvent.is_group():
+            self.nickname_manager.update_after_recv(messageEvent)
             await self.meme_manager.update_memes(messageEvent.get_memes_url())
             willing = await self.willing_manager.change_willing_after_receive(
                 messageEvent
@@ -57,11 +64,10 @@ class Bot:
                     messageEvent.group_id
                 )
                 routine = self.schedule_generator.get_current_task()
-                analysis_result = self.llm_api.semantic_analysis(
-                    messageEvent, chat_history
-                )
-                relavant_memories = self.memory.recall(analysis_result.get("keywords"))
-
+                analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
+                relavant_memories = self.memory.recall(analysis_result.get("keywords"),analysis_result.get("summary"))
+                logger.debug(f"当前上下文摘要->{analysis_result.get('summary')}")
+                
                 prompt = self.prompt_builder.build_prompt(
                     current_message=messageEvent,
                     chat_history=chat_history,
@@ -78,6 +84,7 @@ class Bot:
                     logger.info(f"bot回复->{part}")
                     await asyncio.sleep(len(part) // 2)
                     await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
+                    self.push_bot_msg(messageEvent,part)
                 meme = self.meme_manager.get_meme()
                 if meme:
                     await self.ws.send(self.wrap_image(messageEvent.message_type,messageEvent.group_id,meme))
@@ -119,16 +126,7 @@ class Bot:
 
         return json.dumps(tmp)
 
-    def get_nickname_by_id(self, group_id, user_id, no_cache=False) -> str:
-        tmp = {
-            "action": "get_group_member_info",
-            "params": {"group_id": group_id, "user_id": user_id, "no_cache": no_cache},
-        }
-        self.ws.send(json.dumps(tmp))
-        res = self.ws.recv()
-        print(res)
-
-    def get_keywords(self, chat_history: list[MessageEvent]):
+    def get_keywords(self,chat_history:list[MessageEvent]):
         plaintext = ""
         for message in chat_history:
             # plaintext += f"[{message.sender.nickname}]:{message.get_plaintext()}\n"
@@ -137,3 +135,24 @@ class Bot:
         # logger.info(f"当前上下文->{plaintext}")
         keywords = jieba.analyse.extract_tags(plaintext, topK=5)
         return keywords
+    
+    def push_bot_msg(self, messageEvent:MessageEvent, part:str) -> None:
+        sent_msg = {
+            "self_id":messageEvent.self_id,
+            "user_id":messageEvent.self_id,
+            "group_id":messageEvent.group_id,
+            "sender":{
+                "user_id":messageEvent.self_id,
+                "nickname":"我"
+            },
+            "message":[
+                {
+                    "type":"text",
+                    "data":{
+                        "text":part
+                    }
+                }
+            ]
+        }
+        sent_message = MessageEvent(sent_msg)
+        self.message_manager.push_message(messageEvent.group_id,False,sent_message)

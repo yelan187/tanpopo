@@ -59,7 +59,7 @@ class WillingManager:
         """
         事件触发后改变回复意愿。
         """
-        if message.is_tome():
+        if message.is_tome:
             increase = 0.5
         elif global_config.bot_config["nickname"] in message.get_plaintext():
             increase = 0.2
