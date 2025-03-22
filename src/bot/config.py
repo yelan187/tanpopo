@@ -45,8 +45,12 @@ class Config:
         "reranking_k": 5
     }
 
+    memes_config = {
+        "memes_table_name": "memes",
+    }
+
     database_config = {
-        "uri": "mongodb://localhost:27017/",
+        "url": "mongodb://localhost:27017/",
         "database_name":"tanpopo"
     }
 

@@ -13,7 +13,7 @@ class NicknameManager:
     
     def update_after_recv(self, messageEvent:MessageEvent) -> None:
         self.known_after_recv(messageEvent)
-        if isinstance(messageEvent.at_list,list) and messageEvent.at_list!=[]:
+        if messageEvent.at_list!=[]:
             tmp = ["全体成员"] if messageEvent.at_list[0]=="all" else []
             for i in messageEvent.at_list:
                 if i in self.id_nickname.keys():

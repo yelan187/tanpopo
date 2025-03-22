@@ -32,10 +32,10 @@ class Bot:
         self.nickname_manager = NicknameManager()
         self.meme_manager = MemeManager()
         self.memory = Memory(self)
+
         asyncio.create_task(self.willing_manager.start_regression_task())
         asyncio.create_task(self.memory.start_building_task())
 
-        self.db = Database(global_config.database_config["database_name"],global_config.database_config["uri"])
         self.ws = ws
 
     async def handle_message(self, messageEvent: MessageEvent):

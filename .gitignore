@@ -1,5 +1,6 @@
 test/
 img/
+tmp/
 __pycache__/
 
 image.db

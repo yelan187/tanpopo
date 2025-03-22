@@ -29,7 +29,14 @@ class MessageEvent:
 
     def get_at_list(self):
         tmp = []
-        return "".join([segment.data.get('text') for segment in self.message.segments if segment.type == 'text'])
+        for segment in self.message.segments:
+            if segment.type == "at":
+                if segment.data.get("qq") == "all":
+                    tmp = ["all"]
+                    break
+                else:
+                    tmp.append(segment.data.get("qq"))
+        return tmp
 
     def get_memes_url(self) -> list[str]:
         """获取表情包url"""
@@ -46,7 +53,7 @@ class MessageEvent:
             if seg.type == "image" and int(seg.data.get("sub_type")) == 0:
                 result.append(seg.data.get("url"))
         return result
-    
+
     def is_tome(self):
         for segment in self.message.segments:
             if segment.type == 'at':

@@ -131,6 +131,25 @@ class LLMAPI:
         response = requests.request("POST", url, json=payload, headers=headers)
         return response.json()
 
+    def create_image_description(self,base64_img:str)->str:
+        response = self.client.chat.completions.create(
+            model=self.image_model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "请用简短的几句话描述这张图片的内容和可能表达的情感，**不要**超过50字"},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_img}"
+                            },
+                        },
+                    ],
+                },
+            ],
+        )
+        return response.choices[0].message.content
 
 if __name__ == "__main__":
 
@@ -140,4 +159,4 @@ if __name__ == "__main__":
 
     llmapi = LLMAPI(global_config.gpt_settings)
     img_base64 = encode_image("/Users/xuyitian/Downloads/avatar.jpeg")
-    print(llmapi.send_request_image("请用几个词描述这张图片", img_base64))
+    print(llmapi.send_request_image(img_base64))
