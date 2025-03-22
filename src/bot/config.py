@@ -48,6 +48,7 @@ class Config:
 
     memes_config = {
         "memes_table_name": "memes",
+        "add_meme_probability": 0.5
     }
 
     database_config = {
