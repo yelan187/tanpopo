@@ -13,7 +13,8 @@ class Config:
         "chat_history",
         "current_msg",
         "memory",
-        
+        "actions",
+        "basic"
     ]
 
     gpt_settings = {
@@ -50,7 +51,7 @@ class Config:
         "build_associate_num": 3,
         "forget_interval": 3600,
         "forget_threshold": 0.2,
-        "recall_threshold": 0.8
+        "recall_threshold": 0.6
     }
 
     memes_config = {
