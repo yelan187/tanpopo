@@ -18,7 +18,7 @@ class MemoryPiece:
 class Memory():
     def __init__(self,bot,dim=global_config.memory_config['embedding_dim'],query_faiss_k=global_config.memory_config['query_faiss_k'],reranking_k=global_config.memory_config['reranking_k']):
         from .bot import Bot
-        self.db = Database(global_config.database_config['database_name'], global_config.database_config['url'])
+        self.db = Database(global_config.database_config['database_name'], global_config.database_config['uri'])
         self.bot:Bot = bot
         self.started = False
         self.task = None
@@ -55,7 +55,6 @@ class Memory():
             embeddings.append(embedding)
         embeddings = np.array(embeddings)
         self.index.add(embeddings)
-
         logger.info("记忆库加载完成")
 
     async def build_memory(self):

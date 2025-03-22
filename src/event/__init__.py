@@ -38,21 +38,22 @@ class MessageEvent:
                     tmp.append(segment.data.get("qq"))
         return tmp
 
-    def get_memes_url(self) -> list[str]:
-        """获取表情包url"""
-        result = []
+    def get_imgs_url(self):
+        """获取图片url及是否是表情包"""
+        urls = []
+        is_meme = []
         for seg in self.message.segments:
-            if seg.type == "image" and int(seg.data.get("sub_type")) == 1:
-                result.append(seg.data.get("url"))
-        return result
+            if seg.type == "image":
+                urls.append(seg.data.get("url"))
+                try:
+                    if int(seg.data.get("sub_type")) == 1:
+                        is_meme.append(True)
+                    else:
+                        is_meme.append(False)
+                except:
+                    is_meme.append(False)
 
-    def get_images_url(self) -> list[str]:
-        """获取图片url"""
-        result = []
-        for seg in self.message.segments:
-            if seg.type == "image" and int(seg.data.get("sub_type")) == 0:
-                result.append(seg.data.get("url"))
-        return result
+        return  (urls,is_meme)
 
     def is_tome(self):
         for segment in self.message.segments:

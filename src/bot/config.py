@@ -51,7 +51,7 @@ class Config:
     }
 
     database_config = {
-        "url": "mongodb://localhost:27017/",
+        "uri": "mongodb://localhost:27017/",
         "database_name":"tanpopo"
     }
 

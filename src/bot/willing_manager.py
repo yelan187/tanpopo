@@ -76,4 +76,4 @@ class WillingManager:
         
     async def change_willing_if_thinking(self,idd):
         async with self.lock:
-            self.current_willing[idd] = max(0, self.current_willing[idd] - 0.3)
+            self.current_willing[idd] = max(0, self.current_willing[idd] - 0.4)
