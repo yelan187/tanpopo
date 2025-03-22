@@ -1,5 +1,6 @@
 import sys
 import os
+from hashlib import md5
 from datetime import datetime
 import numpy as np
 import faiss
@@ -10,15 +11,12 @@ from src.bot.database import Database
 from src.bot.config import global_config
 from src.bot.llmapi import LLMAPI
 
-# 模拟 Memory 类，用于在数据库中插入记忆项
 class Memory:
     def __init__(self):
         self.db = Database(global_config.database_config['database_name'], global_config.database_config['uri'])
         self.llm_api = LLMAPI(global_config.gpt_settings)
-        self.index = faiss.IndexFlatIP(global_config.memory_config['embedding_dim'])  # 使用内积（cosine similarity）
 
     def insert_initial_memories(self):
-        # 清空数据库中的记忆项
         self.db.delete_many(global_config.memory_config['memory_table_name'], {})
 
         initial_memories = [
@@ -55,20 +53,16 @@ class Memory:
                 "embedding": embedding.tolist(),  # 获取文本嵌入
                 "keywords": keywords,
                 "create_time": new_time,
-                "last_access_time": new_time,
                 "strength": 1.0,
                 "is_private": False,
-                "pg_id": 0  # 假设属于群组 0
+                "pg_id": 0, # 假设属于群组 0
+                "hash":md5(summary.encode()).hexdigest(),
+                "associates":[]
             }
             
             cnt += 1
             self.db.insert(global_config.memory_config['memory_table_name'], new_memory_item)
             print(f"成功插入新记忆: {new_memory_item['_id']} - {new_memory_item['summary']}")
-
-            # 归一化嵌入向量，确保计算余弦相似度时向量方向的影响
-            embedding_array = np.array(new_memory_item['embedding'], dtype=np.float32)
-            faiss.normalize_L2(embedding_array)  # 直接在插入时归一化
-            self.index.add(embedding_array.reshape(1, -1))  # 将归一化后的向量添加到 FAISS 索引中
 
 # 创建并运行插入初始记忆的脚本
 if __name__ == "__main__":

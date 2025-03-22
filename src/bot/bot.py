@@ -2,10 +2,6 @@ import json
 import random
 import asyncio
 
-import jieba
-import jieba.analyse
-
-from .database import Database
 from ..event import MessageEvent
 from .prompt_builder import PromptBuilder
 from .message_buffer import MessageManager
@@ -37,6 +33,7 @@ class Bot:
         asyncio.create_task(self.image_manager.load_memes())
         asyncio.create_task(self.willing_manager.start_regression_task())
         asyncio.create_task(self.memory.start_building_task())
+        asyncio.create_task(self.memory.start_forgetting_task())
 
         self.ws = ws
 
@@ -67,7 +64,7 @@ class Bot:
                 )
                 routine = self.schedule_generator.get_current_task()
                 analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
-                relavant_memories = self.memory.recall(analysis_result.get("keywords"),analysis_result.get("summary"))
+                relavant_memories = await self.memory.recall(analysis_result.get("summary"))
                 logger.debug(f"当前上下文摘要->{analysis_result.get('summary')}")
                 
                 user_prompt = self.prompt_builder.build_user_prompt(
@@ -85,11 +82,14 @@ class Bot:
                 if resp is None:
                     logger.warning("回复无法解析")
                     return
-                for part in resp:
+                for i in range(len(resp)):
+                    part = resp[i]
                     if part == "":
                         continue
                     logger.info(f"bot回复->{part}")
-                    # await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
+                    if i != 0:
+                        await asyncio.sleep(len(part) // 2)
+                    await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
                     await self.push_bot_msg(messageEvent,part)
                     await asyncio.sleep(len(part) // 2)
                 # meme = await self.image_manager.match_meme(raw_resp)
@@ -133,16 +133,6 @@ class Bot:
 
         return json.dumps(tmp)
 
-    def get_keywords(self,chat_history:list[MessageEvent]):
-        plaintext = ""
-        for message in chat_history:
-            # plaintext += f"[{message.sender.nickname}]:{message.get_plaintext()}\n"
-            plaintext += f"{message.get_plaintext()}\n"
-
-        # logger.info(f"当前上下文->{plaintext}")
-        keywords = jieba.analyse.extract_tags(plaintext, topK=5)
-        return keywords
-    
     async def push_bot_msg(self, messageEvent:MessageEvent, part:str) -> None:
         sent_msg = {
             "self_id":messageEvent.self_id,

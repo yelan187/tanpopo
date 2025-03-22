@@ -76,7 +76,7 @@ class Database:
             self.logger.error(f"查询数据失败: {e}")
             return []
 
-    def find_one(self, collection_name: str, query: dict):
+    def find_one(self, collection_name: str, query: dict) -> dict:
         """
         查询单条数据
 
@@ -93,7 +93,7 @@ class Database:
             self.logger.error(f"查询单条数据失败: {e}")
             return None
 
-    def update_one(self, collection_name: str, query: dict, update_data: dict, upsert: bool = False):
+    def update_one(self, collection_name: str, query: dict, payload: dict, upsert: bool = False):
         """
         更新单条数据
 
@@ -107,7 +107,7 @@ class Database:
             collection = self.db[collection_name]
             result = collection.find_one_and_update(
                 query,
-                {"$set": update_data},
+                payload,
                 return_document=ReturnDocument.AFTER,
                 upsert=upsert
             )
@@ -117,7 +117,7 @@ class Database:
             self.logger.error(f"更新数据失败: {e}")
             return None
 
-    def update_many(self, collection_name: str, query: dict, update_data: dict):
+    def update_many(self, collection_name: str, query: dict, payload: dict):
         """
         更新多条数据
 
@@ -128,7 +128,7 @@ class Database:
         """
         try:
             collection = self.db[collection_name]
-            result = collection.update_many(query, {"$set": update_data})
+            result = collection.update_many(query, {"$set": payload})
             self.logger.debug(f"更新了 {result.modified_count} 条数据")
             return result.modified_count
         except PyMongoError as e:

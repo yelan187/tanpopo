@@ -21,7 +21,7 @@ class MemoryPiece:
 
 class Memory():
     def __init__(self, dim=global_config.memory_config['embedding_dim'], query_faiss_k=global_config.memory_config['query_faiss_k'], reranking_k=global_config.memory_config['reranking_k']):
-        self.db = Database(global_config.database_config['database_name'], global_config.database_config['url'])
+        self.db = Database(global_config.database_config['database_name'], global_config.database_config['uri'])
         self.started = False
         self.task = None
         self.lock = asyncio.Lock()
@@ -91,26 +91,26 @@ class Memory():
         retrieved_docs = []
         for idx in indices[0]:
             if idx != -1:
-                retrieved_docs.append(self.memory[idx]['summary'])  # 获取摘要
+                retrieved_docs.append([self.memory[idx]['summary'], self.memory[idx]['keywords']])  # 获取摘要
 
         # 打印初步检索结果
         logger.info("初步检索到的候选记忆：")
         for i, (doc, dist) in enumerate(zip(retrieved_docs, distances[0])):
-            logger.info(f"{i}: {doc} - 相似度：{dist}")
+            logger.info(f"{i}: {doc[0]}: {doc[1]} - 相似度：{dist}")
 
         # Step 2: 使用 rerank 函数重新排序候选文档
-        reranked_memories = self.rerank(summary, [doc for i, (doc, dist) in enumerate(zip(retrieved_docs, distances[0]))])['results']
+        reranked_memories = self.rerank(summary, [doc for i, (doc, dist) in enumerate(zip([i[0] for i in retrieved_docs], distances[0]))])['results']
 
         # 返回重新排序的记忆
         logger.info("重新排序后的记忆：")
         for i in reranked_memories:
             index = i['index']
-            logger.info(f"{index}: {retrieved_docs[index]} - 相似度：{i['relevance_score']}")
+            logger.info(f"{index}: {retrieved_docs[index][0]}: {retrieved_docs[index][1]} - 相似度：{i['relevance_score']}")
 
 async def main():
     memory = Memory()
     await memory.load_memory()
-    query = "有什么 galgame 推荐吗"
+    query = "叶阑学日语是为了去京都吧。现在搁置了感觉计划要延后了。"
     memory.recall([],query)
 
 if __name__ == "__main__":
