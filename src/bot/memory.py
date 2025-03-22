@@ -37,7 +37,8 @@ class Memory():
             "last_access_time":int,
             "strength":float,
             "is_private":bool,
-            "pg_id":int
+            "pg_id":int,
+            "associates":list[int]
         }
         '''
         self.memory:list[dict] = []
@@ -70,7 +71,6 @@ class Memory():
                 analysis_result = self.llm_api.semantic_analysis(current_message, chat_history)
                 self.recall(analysis_result['keywords'], analysis_result['summary'])
 
-                # 创建新记忆项
                 new_summary = analysis_result['summary']
                 new_keywords = analysis_result['keywords']
                 new_embedding = self.llm_api.send_request_embedding(new_summary)  # 获取新记忆项的 embedding
@@ -87,7 +87,8 @@ class Memory():
                     "last_access_time": new_time,
                     "strength": 1.0,  # 强度可以从一些其他逻辑来确定
                     "is_private": False,
-                    "pg_id": current_message.get_id()
+                    "pg_id": current_message.get_id(),
+                    "associates": []
                 }
 
                 self.db.insert(global_config.memory_config['memory_table_name'], new_memory_item)
@@ -123,3 +124,17 @@ class Memory():
         # logger.debug(f"查询结果: \n{indices}\n{distances}")
 
         return [MemoryPiece(self.memory[indices[0][i]]['summary'],self.memory[indices[0][i]]['keywords']) for i in range(len(distances[0]))]
+    
+'''
+- 查询记忆: 
+
+- 构建新记忆
+
+- 更新强度
+
+- 压缩记忆
+
+- 联想
+
+- 构建联想边
+'''
