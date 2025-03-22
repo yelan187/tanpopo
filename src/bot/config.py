@@ -43,7 +43,14 @@ class Config:
         "build_interval": 60,
         "embedding_dim": 1024,
         "query_faiss_k": 10,
-        "reranking_k": 10
+        "reranking_k": 3,
+        "strength_delta": 0.1,
+        "decrease_rate": 0.95,
+        "keywords_num": 2,
+        "compression_threshold": 0.9,
+        "build_associate_num": 3,
+        "forget_interval": 3600,
+        "forget_threshold": 0.1,
     }
 
     memes_config = {

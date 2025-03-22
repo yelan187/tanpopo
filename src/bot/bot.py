@@ -36,6 +36,7 @@ class Bot:
         asyncio.create_task(self.image_manager.load_memes())
         asyncio.create_task(self.willing_manager.start_regression_task())
         asyncio.create_task(self.memory.start_building_task())
+        asyncio.create_task(self.memory.start_forgetting_task())
 
         self.ws = ws
 
@@ -66,7 +67,7 @@ class Bot:
                 )
                 routine = self.schedule_generator.get_current_task()
                 analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
-                relavant_memories = self.memory.recall(analysis_result.get("keywords"),analysis_result.get("summary"))
+                relavant_memories = await self.memory.recall(analysis_result.get("summary"))
                 logger.debug(f"当前上下文摘要->{analysis_result.get('summary')}")
                 
                 prompt = self.prompt_builder.build_prompt(

@@ -79,7 +79,7 @@ class LLMAPI:
         prompt += f"<CurrentMessage>现在**昵称**为{messageEvent.sender.nickname}的人说：{messageEvent.get_plaintext()}</CurrentMessage>"
         prompt += f"<Requirement>现在请你根据<ChatHistory>和<CurrentMessage>标签标出的内容,分析出以下信息："
 
-        prompt += f"""1. **CurrentMessage** 的 **关键词** (**五个词左右**)"""
+        prompt += f"""1. **CurrentMessage** 的 **关键词** (四个词左右,一定要**有标志性**,可以**被联想到**)"""
         prompt += f"""2. 听到这些对话后, **你** 的情感 (**一个准确的词语**)(注意,要表达的是 **你自己的情感**)"""
         prompt += f"""3. 根据关键词,主题,情感等,生成 **ChatHistory** 的 **摘要** (**一个简短的句子**)"""
 
@@ -114,7 +114,8 @@ class LLMAPI:
         )
         return np.array(response.data[0].embedding, dtype=np.float32)
 
-    def send_request_rerank(self, query_string: str, documents: list[str]):
+    def send_request_rerank(self, query_string: str, documents: list[str], reranking_k=None) -> list[dict]:
+        reranking_k = global_config.memory_config['reranking_k'] if reranking_k is None else reranking_k
         url = self.base_url + "/rerank"
         payload = {
             "model": self.reranking_model,
@@ -130,7 +131,7 @@ class LLMAPI:
             "Content-Type": "application/json",
         }
         response = requests.request("POST", url, json=payload, headers=headers)
-        return response.json()
+        return response.json()['results']
 
     def create_image_description(self,base64_img:str)->str:
         response = self.client.chat.completions.create(

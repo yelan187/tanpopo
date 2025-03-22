@@ -21,7 +21,7 @@ class MemoryPiece:
 
 class Memory():
     def __init__(self, dim=global_config.memory_config['embedding_dim'], query_faiss_k=global_config.memory_config['query_faiss_k'], reranking_k=global_config.memory_config['reranking_k']):
-        self.db = Database(global_config.database_config['database_name'], global_config.database_config['url'])
+        self.db = Database(global_config.database_config['database_name'], global_config.database_config['uri'])
         self.started = False
         self.task = None
         self.lock = asyncio.Lock()
@@ -110,7 +110,7 @@ class Memory():
 async def main():
     memory = Memory()
     await memory.load_memory()
-    query = "能介绍一下日本吗?"
+    query = "叶阑学日语是为了去京都吧。现在搁置了感觉计划要延后了。"
     memory.recall([],query)
 
 if __name__ == "__main__":
