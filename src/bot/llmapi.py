@@ -1,4 +1,3 @@
-import base64
 import json
 
 import numpy as np
@@ -155,3 +154,28 @@ class LLMAPI:
             ],
         )
         return response.choices[0].message.content
+
+    def send_request_text_full(self, sys_prompt: str,user_prompt: str):
+        """
+        发送文本请求
+
+        :param sys_prompt: 系统提示
+        :param user_prompt: 用户提示
+        :return: json格式的响应
+        """
+        response = self.client.chat.completions.create(
+            model=self.chat_model,
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            stream=self.stream,
+            response_format={"type": "json_object"},
+        )
+        if self.stream:
+            resp = ""
+            for chunk in response:
+                resp += chunk.choices[0].delta.content
+            return json.loads(resp)
+        else:
+            return json.loads(response.choices[0].message.content)

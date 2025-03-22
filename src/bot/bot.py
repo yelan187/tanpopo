@@ -67,17 +67,21 @@ class Bot:
                 relavant_memories = await self.memory.recall(analysis_result.get("summary"))
                 logger.debug(f"当前上下文摘要->{analysis_result.get('summary')}")
                 
-                prompt = self.prompt_builder.build_prompt(
+                user_prompt = self.prompt_builder.build_user_prompt(
                     current_message=messageEvent,
                     chat_history=chat_history,
                     relavant_memories=relavant_memories,
                     routine=routine,
                     img_descriptions=desriptions
                 )
-
-                logger.debug(f"构建prompt->{prompt}")
-                raw_resp = self.llm_api.send_request_text(prompt)
-                resp = raw_resp.split("。")
+                sys_prompt = self.prompt_builder.build_sys_prompt()
+                logger.debug(f"构建prompt->{user_prompt}")
+                json_resp = self.llm_api.send_request_text_full(sys_prompt,user_prompt)
+                logger.warning(f"原始响应->{json_resp}")
+                resp = json_resp.get("reply",None)
+                if resp is None:
+                    logger.warning("回复无法解析")
+                    return
                 for i in range(len(resp)):
                     part = resp[i]
                     if part == "":
@@ -87,12 +91,13 @@ class Bot:
                         await asyncio.sleep(len(part) // 2)
                     await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
                     await self.push_bot_msg(messageEvent,part)
-                meme = await self.image_manager.match_meme(raw_resp)
-                if random.random() < 1:
-                    await self.ws.send(self.wrap_image(messageEvent.message_type,messageEvent.group_id,meme))
+                    await asyncio.sleep(len(part) // 2)
+                # meme = await self.image_manager.match_meme(raw_resp)
+                # if random.random() < 1:
+                #     await self.ws.send(self.wrap_image(messageEvent.message_type,messageEvent.group_id,meme))
             else:
                 logger.info(f"bot选择不回复")
-                return []
+                return
 
     def wrap_image(self,message_type,id,image_base64)->str:
         tmp = {
