@@ -1,7 +1,8 @@
 import sys
 import os
-import asyncio
 from datetime import datetime
+import numpy as np
+import faiss
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -14,8 +15,10 @@ class Memory:
     def __init__(self):
         self.db = Database(global_config.database_config['database_name'], global_config.database_config['uri'])
         self.llm_api = LLMAPI(global_config.gpt_settings)
+        self.index = faiss.IndexFlatIP(global_config.memory_config['embedding_dim'])  # 使用内积（cosine similarity）
 
     def insert_initial_memories(self):
+        # 清空数据库中的记忆项
         self.db.delete_many(global_config.memory_config['memory_table_name'], {})
 
         initial_memories = [
@@ -41,15 +44,15 @@ class Memory:
             ("叶阑擅长 CTF 网络安全竞赛,曾获得过许多奖项", ["叶阑", "CTF", "网络安全竞赛"]),
         ]
 
-
-        # 插入到数据库中
         cnt = 0
         for summary, keywords in initial_memories:
             new_time = int(datetime.now(global_config.time_zone).timestamp())
+            embedding = self.llm_api.send_request_embedding(summary)
+            embedding = embedding / np.linalg.norm(embedding)  # 归一化嵌入向量
             new_memory_item = {
                 "_id": cnt,  # 生成一个自增的 ID
                 "summary": summary,
-                "embedding": self.llm_api.send_request_embedding(summary).tolist(),  # 如果需要可以留空，或者使用随机向量
+                "embedding": embedding.tolist(),  # 获取文本嵌入
                 "keywords": keywords,
                 "create_time": new_time,
                 "last_access_time": new_time,
@@ -57,12 +60,17 @@ class Memory:
                 "is_private": False,
                 "pg_id": 0  # 假设属于群组 0
             }
+            
             cnt += 1
             self.db.insert(global_config.memory_config['memory_table_name'], new_memory_item)
             print(f"成功插入新记忆: {new_memory_item['_id']} - {new_memory_item['summary']}")
 
-# 创建并运行插入初始记忆的脚本
+            # 归一化嵌入向量，确保计算余弦相似度时向量方向的影响
+            embedding_array = np.array(new_memory_item['embedding'], dtype=np.float32)
+            faiss.normalize_L2(embedding_array)  # 直接在插入时归一化
+            self.index.add(embedding_array.reshape(1, -1))  # 将归一化后的向量添加到 FAISS 索引中
 
+# 创建并运行插入初始记忆的脚本
 if __name__ == "__main__":
     memory = Memory()
     memory.insert_initial_memories()

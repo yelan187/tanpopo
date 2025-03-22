@@ -24,6 +24,7 @@ class Config:
         "image_model": "Qwen/Qwen2-VL-72B-Instruct",
         "semantic_analysis_model": "Qwen/Qwen2-7B-Instruct",
         "embedding_model":"BAAI/bge-large-zh-v1.5",
+        "reranking_model":"Pro/BAAI/bge-reranker-v2-m3",
         "stream": False,
     }
 
@@ -42,7 +43,7 @@ class Config:
         "build_interval": 60,
         "embedding_dim": 1024,
         "query_faiss_k": 10,
-        "reranking_k": 5
+        "reranking_k": 10
     }
 
     memes_config = {
