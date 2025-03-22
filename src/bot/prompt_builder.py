@@ -62,7 +62,7 @@ class PromptBuilder:
 
         prompt = f"<Memory>这使你回忆起了以下事件:"
         for piece in relavant_memories:
-            prompt += f"<MemoryPiece>{piece.summary}</MemoryPiece>"
+            prompt += f"{piece.summary};"
         prompt += "</Memory>"
 
         return prompt

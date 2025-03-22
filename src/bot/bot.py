@@ -33,6 +33,7 @@ class Bot:
         self.image_manager = ImageManager()
         self.memory = Memory(self)
 
+        asyncio.create_task(self.message_manager.start_task())
         asyncio.create_task(self.image_manager.load_memes())
         asyncio.create_task(self.willing_manager.start_regression_task())
         asyncio.create_task(self.memory.start_building_task())
@@ -48,10 +49,10 @@ class Bot:
         logger.info(
             f"收到来自{'群聊'+str(messageEvent.group_id) if messageEvent.is_group() else '私聊'}的消息->{messageEvent.raw_message}"
         )
-        self.message_manager.push_message(
+        await self.message_manager.push_message(
             messageEvent.get_id(), messageEvent.is_private(), messageEvent
         )
-        chat_history = self.message_manager.get_all_messages(
+        chat_history = await self.message_manager.get_all_messages(
             messageEvent.get_id(), messageEvent.is_private()
         )
         if messageEvent.is_group():
@@ -86,7 +87,7 @@ class Bot:
                     logger.info(f"bot回复->{part}")
                     await asyncio.sleep(len(part) // 2)
                     await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
-                    self.push_bot_msg(messageEvent,part)
+                    await self.push_bot_msg(messageEvent,part)
                 meme = await self.image_manager.match_meme(raw_resp)
                 if random.random() < 1:
                     await self.ws.send(self.wrap_image(messageEvent.message_type,messageEvent.group_id,meme))
@@ -138,7 +139,7 @@ class Bot:
         keywords = jieba.analyse.extract_tags(plaintext, topK=5)
         return keywords
     
-    def push_bot_msg(self, messageEvent:MessageEvent, part:str) -> None:
+    async def push_bot_msg(self, messageEvent:MessageEvent, part:str) -> None:
         sent_msg = {
             "self_id":messageEvent.self_id,
             "user_id":messageEvent.self_id,
@@ -157,4 +158,4 @@ class Bot:
             ]
         }
         sent_message = MessageEvent(sent_msg)
-        self.message_manager.push_message(messageEvent.group_id,False,sent_message)
+        await self.message_manager.push_message(messageEvent.group_id,False,sent_message)
