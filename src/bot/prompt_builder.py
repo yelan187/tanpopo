@@ -57,12 +57,12 @@ class PromptBuilder:
         return f"<schedule>根据你的日程，你现在正在{routine}</schedule>"
     
     def _prompt_memory(self,relavant_memories:list[MemoryPiece],**kargs):
-        if relavant_memories == {}:
+        if relavant_memories == []:
             return ""
 
         prompt = f"<Memory>这使你回忆起了以下事件:"
         for piece in relavant_memories:
-            prompt += f"{piece.summary};"
+            prompt += f"[{piece.create_time}]:{piece.summary};"
         prompt += "</Memory>"
 
         return prompt

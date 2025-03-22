@@ -49,8 +49,9 @@ class Config:
         "keywords_num": 2,
         "compression_threshold": 0.9,
         "build_associate_num": 3,
-        "forget_interval": 3600,
-        "forget_threshold": 0.1,
+        "forget_interval": 30,
+        "forget_threshold": 0.2,
+        "recall_threshold": 0.8
     }
 
     memes_config = {

@@ -17,7 +17,7 @@ class MemoryPiece:
     def __init__(self,memory_piece:dict,associate:bool):
         self.summary:str = memory_piece['summary']
         self.associate:bool = associate
-        self.create_time:str = datetime.fromtimestamp(memory_piece['create_time']).strftime("%Y-%m-%d %H:%M:%S")
+        self.create_time:str = datetime.fromtimestamp(memory_piece['create_time']).strftime("%Y-%m-%d")
 
 class Memory():
     def __init__(self,bot):
@@ -40,6 +40,7 @@ class Memory():
         self.forget_interval = global_config.memory_config['forget_interval']
         self.build_associate_num = global_config.memory_config['build_associate_num']
         self.forget_threshold = global_config.memory_config['forget_threshold']
+        self.recall_threshold = global_config.memory_config['recall_threshold']
         '''
         memory_item = {
             "_id":int,  # 仅用于搜索
@@ -78,6 +79,7 @@ class Memory():
             async with self.lock:
                 for m in self.memory:
                     m['strength'] *= self.decrease_rate
+                    self.db.update_one(self.table_name, {"hash": m['hash']}, {"$set": {"strength": m['strength']}})
                 total_memory = len(self.memory)
                 index = 0
                 while index < total_memory:
@@ -113,7 +115,7 @@ class Memory():
         while True:
             await asyncio.sleep(self.build_interval)
             for group_id in global_config.group_talk_allowed:
-                chat_history = self.bot.message_manager.get_all_messages(group_id, False)
+                chat_history = await self.bot.message_manager.get_all_messages(group_id, False)
                 if chat_history == []:
                     continue                
                 current_message = chat_history[-1]
@@ -165,7 +167,7 @@ class Memory():
             self.biulding_started = True
             self.task = asyncio.create_task(self.build_memory())
 
-    def get_reranked_result(self,summary:str,faiss_k=None,reranking_k=None) -> list:
+    def get_reranked_result(self,summary:str,faiss_k=None,reranking_k=None,recall_threshold=None) -> list:
         
         '''
         reranked_result = [
@@ -176,7 +178,7 @@ class Memory():
             ...
         ]
         '''
-
+        recall_threshold = self.recall_threshold if recall_threshold is None else recall_threshold
         faiss_k = self.query_faiss_k if faiss_k is None else faiss_k
         reranking_k = self.reranking_k if reranking_k is None else reranking_k
         query_embedding:np.array = self.llm_api.send_request_embedding(summary)
@@ -185,10 +187,14 @@ class Memory():
 
         doc_indexes = indices[0]
         reranked_result:list[dict] = self.llm_api.send_request_rerank(summary,[self.memory[i]['summary'] for i in doc_indexes], reranking_k)
+        res = []
         for i in range(len(reranked_result)):
+            if reranked_result[i]['relevance_score'] < recall_threshold:
+                continue
             reranked_result[i]["index"] = int(doc_indexes[i])
+            res += [reranked_result[i]]
         
-        return reranked_result,query_embedding
+        return res,query_embedding
 
     async def update_memory_strength(self,_id:list[int],delta:float):
         for index in _id:
@@ -210,7 +216,9 @@ class Memory():
         reranked_result,_ = self.get_reranked_result(summary)
 
         await self.update_memory_strength([i['index'] for i in reranked_result],self.strength_delta)
-
+        if reranked_result == []:
+            return []
+        
         associates = []
         for i in reranked_result:
             associates += self.memory[i['index']]['associates']
@@ -220,12 +228,11 @@ class Memory():
             associated_memories:list[dict] = [self.db.find_one(self.table_name,{'hash':i}) for i in associates]
             associated_memories = self.select_associated_memories(associated_memories)
             memory_pieces += [MemoryPiece(i,associate=True) for i in associated_memories]
-            await self.update_memory_strength([i['index'] for i in associated_memories],self.strength_delta)
+            await self.update_memory_strength([i['_id'] for i in associated_memories],self.strength_delta)
 
         memory_pieces += [MemoryPiece(self.memory[i['index']],associate=False) for i in reranked_result]
         return memory_pieces
 
-        
 '''
 - 查询记忆: 相似度计算然后重排序,找到最相关的三条记忆,再根据这三条记忆的联想记忆找到联想度最强的两条记忆
     

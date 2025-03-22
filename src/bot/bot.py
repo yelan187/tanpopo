@@ -2,10 +2,6 @@ import json
 import random
 import asyncio
 
-import jieba
-import jieba.analyse
-
-from .database import Database
 from ..event import MessageEvent
 from .prompt_builder import PromptBuilder
 from .message_buffer import MessageManager
@@ -82,11 +78,13 @@ class Bot:
                 logger.debug(f"构建prompt->{prompt}")
                 raw_resp = self.llm_api.send_request_text(prompt)
                 resp = raw_resp.split("。")
-                for part in resp:
+                for i in range(len(resp)):
+                    part = resp[i]
                     if part == "":
                         continue
                     logger.info(f"bot回复->{part}")
-                    await asyncio.sleep(len(part) // 2)
+                    if i != 0:
+                        await asyncio.sleep(len(part) // 2)
                     await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
                     await self.push_bot_msg(messageEvent,part)
                 meme = await self.image_manager.match_meme(raw_resp)
@@ -130,16 +128,6 @@ class Bot:
 
         return json.dumps(tmp)
 
-    def get_keywords(self,chat_history:list[MessageEvent]):
-        plaintext = ""
-        for message in chat_history:
-            # plaintext += f"[{message.sender.nickname}]:{message.get_plaintext()}\n"
-            plaintext += f"{message.get_plaintext()}\n"
-
-        # logger.info(f"当前上下文->{plaintext}")
-        keywords = jieba.analyse.extract_tags(plaintext, topK=5)
-        return keywords
-    
     async def push_bot_msg(self, messageEvent:MessageEvent, part:str) -> None:
         sent_msg = {
             "self_id":messageEvent.self_id,
