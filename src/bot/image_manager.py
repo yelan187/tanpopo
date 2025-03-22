@@ -104,12 +104,12 @@ class MemeManager:
                 data = self.db.find_one(self.table_name,{"hash":hash})
                 if data is None:
                     img_base64 = await self.encode_image('tmp/temp_image') 
-                    new_record = {
-                        "_id":self.data_length,
-                        "hash":hash,
-                        "base64":img_base64,
-                        "description":
-                    }
+                    # new_record = {
+                    #     "_id":self.data_length,
+                    #     "hash":hash,
+                    #     "base64":img_base64,
+                    #     "description":
+                    # }
                     self.db.insert(self.table_name,)
                 return True
         except Exception as e:
@@ -127,7 +127,7 @@ class MemeManager:
             before_files = [x[0] for x in raw]
         for url in urls:
             filename = await self.download_and_save_image(url)
-            filename = filename[4:]#remove prefix
+            filename = filename[4:] #remove prefix
             if not filename in before_files:
                 logger.debug(f"新表情包: {filename}")
                 self.db.insert(filename,"haha","sad")

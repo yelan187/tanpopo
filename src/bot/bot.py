@@ -16,7 +16,7 @@ from .schedule_generator import ScheduleGenerator
 from .nickname_manager import NicknameManager
 from .willing_manager import WillingManager
 from .logger import register_logger
-from .image_manager import MemeManager
+# from .image_manager import MemeManager
 from ..ws import WS
 
 logger = register_logger("bot", global_config.log_level)
@@ -30,7 +30,7 @@ class Bot:
         self.schedule_generator = ScheduleGenerator()
         self.willing_manager = WillingManager()
         self.nickname_manager = NicknameManager()
-        self.meme_manager = MemeManager()
+        # self.meme_manager = MemeManager()
         self.memory = Memory(self)
 
         asyncio.create_task(self.willing_manager.start_regression_task())
@@ -55,7 +55,7 @@ class Bot:
         )
         if messageEvent.is_group():
             self.nickname_manager.update_after_recv(messageEvent)
-            await self.meme_manager.update_memes(messageEvent.get_memes_url())
+            # await self.meme_manager.update_memes(messageEvent.get_memes_url())
             willing = await self.willing_manager.change_willing_after_receive(
                 messageEvent
             )  # 收到消息时更新回复意愿
@@ -85,9 +85,9 @@ class Bot:
                     await asyncio.sleep(len(part) // 2)
                     await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
                     self.push_bot_msg(messageEvent,part)
-                meme = self.meme_manager.get_meme()
-                if meme:
-                    await self.ws.send(self.wrap_image(messageEvent.message_type,messageEvent.group_id,meme))
+                # meme = self.meme_manager.get_meme()
+                # if meme:
+                #     await self.ws.send(self.wrap_image(messageEvent.message_type,messageEvent.group_id,meme))
             else:
                 logger.info(f"bot选择不回复")
                 return []

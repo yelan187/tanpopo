@@ -21,6 +21,7 @@ class LLMAPI:
         self.image_model = settings["image_model"]
         self.semantic_analysis_model = settings["semantic_analysis_model"]
         self.embedding_model = settings["embedding_model"]
+        self.reranking_model = settings["reranking_model"]
         self.stream = settings["stream"]
 
     def send_request_text(self, prompt: str) -> str:
@@ -116,10 +117,10 @@ class LLMAPI:
     def send_request_rerank(self, query_string: str, documents: list[str]):
         url = self.base_url + "/rerank"
         payload = {
-            "model": self.embedding_model,
+            "model": self.reranking_model,
             "query": query_string,
             "documents": documents,
-            "top_n": 5,
+            "top_n": global_config.memory_config['reranking_k'],
             "return_documents": False,
             "max_chunks_per_doc": 1024,
             "overlap_tokens": 80,
