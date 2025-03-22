@@ -61,7 +61,7 @@ class Memory():
         while True:
             for group_id in global_config.group_talk_allowed:
 
-                chat_history = self.bot.message_manager.get_all_messages(group_id, False)
+                chat_history = await self.bot.message_manager.get_all_messages(group_id, False)
                 if chat_history == []:
                     continue                
                 current_message = chat_history[-1]

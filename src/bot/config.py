@@ -10,11 +10,10 @@ class Config:
     enabled_prompts = [
         "personal_information",        
         "time",
-        "schedule",
         "chat_history",
         "current_msg",
         "memory",
-        "basic",
+        
     ]
 
     gpt_settings = {
@@ -29,7 +28,7 @@ class Config:
     }
 
     bot_config = {
-        "personality": "你是一个宅系少女，虽然喜欢打游戏和沉浸在二次元世界中，但并不完全依赖虚拟世界。虽然性格偏内向，但你并不排斥社交，偶尔会和朋友们一起去咖啡馆或者参加小型聚会。",
+        "personality": "你是一个大一学生，正在学习计算机科学，你性格不错，为人友善但有点腹黑",
         "nickname": "N0thing",
     }
 
@@ -55,7 +54,7 @@ class Config:
         "uri": "mongodb://localhost:27017/",
         "database_name":"tanpopo"
     }
-    
+
     message_revoke_interval = 300
 
     time_zone = timezone(timedelta(hours=+8))   # UTC+8
