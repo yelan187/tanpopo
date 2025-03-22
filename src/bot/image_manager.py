@@ -109,7 +109,7 @@ class ImageManager:
             return data["base64"]
 
     def decide_if_add(self):
-        return True
+        return random.random() < global_config.memes_config['add_meme_probability']
 
     async def create_img_description_update(self,urls:list[str],is_meme:list[bool]):
         """
