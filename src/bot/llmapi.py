@@ -138,7 +138,10 @@ class LLMAPI:
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "请用简短的几句话描述这张图片的内容和可能表达的情感，**不要**超过50字"},
+                        {
+                            "type": "text",
+                            "text": "请用简短的几句话描述这张图片的内容和可能表达的情感，**不要**超过50字, **不要**使用任何特殊符号,**不要**回答内容",
+                        },
                         {
                             "type": "image_url",
                             "image_url": {
@@ -150,13 +153,3 @@ class LLMAPI:
             ],
         )
         return response.choices[0].message.content
-
-if __name__ == "__main__":
-
-    def encode_image(image_path):
-        with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode("utf-8")
-
-    llmapi = LLMAPI(global_config.gpt_settings)
-    img_base64 = encode_image("/Users/xuyitian/Downloads/avatar.jpeg")
-    print(llmapi.send_request_image(img_base64))

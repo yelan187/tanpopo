@@ -11,8 +11,8 @@ class Database:
         try:
             self.client = MongoClient(uri)
             self.db = self.client[db_name]
-            self.logger = register_logger('database',global_config.log_level)
-            self.logger.info(f"尝试连接数据库: {db_name}")
+            self.logger = register_logger('database',"INFO")
+            self.logger.debug(f"尝试连接数据库: {db_name}")
         except ServerSelectionTimeoutError as e:
             self.logger.error(f"无法连接到MongoDB: {e}")
             raise
@@ -31,7 +31,7 @@ class Database:
         try:
             collection = self.db[collection_name]
             result = collection.insert_one(data)
-            self.logger.info(f"插入数据成功，插入ID: {result.inserted_id}")
+            self.logger.debug(f"插入数据成功，插入ID: {result.inserted_id}")
             return result.inserted_id
         except PyMongoError as e:
             self.logger.error(f"插入数据失败: {e}")
@@ -48,7 +48,7 @@ class Database:
         try:
             collection = self.db[collection_name]
             result = collection.insert_many(data_list)
-            self.logger.info(f"成功插入 {len(result.inserted_ids)} 条数据")
+            self.logger.debug(f"成功插入 {len(result.inserted_ids)} 条数据")
             return len(result.inserted_ids)
         except PyMongoError as e:
             self.logger.error(f"批量插入数据失败: {e}")
@@ -70,7 +70,7 @@ class Database:
             if limit > 0:
                 cursor = cursor.limit(limit)
             result = list(cursor)
-            self.logger.info(f"查询到 {len(result)} 条数据")
+            self.logger.debug(f"查询到 {len(result)} 条数据")
             return result
         except PyMongoError as e:
             self.logger.error(f"查询数据失败: {e}")
@@ -87,7 +87,7 @@ class Database:
         try:
             collection = self.db[collection_name]
             result = collection.find_one(query)
-            self.logger.info(f"查询到一条数据: {result}")
+            self.logger.debug(f"查询到一条数据: {result}")
             return result
         except PyMongoError as e:
             self.logger.error(f"查询单条数据失败: {e}")
@@ -111,7 +111,7 @@ class Database:
                 return_document=ReturnDocument.AFTER,
                 upsert=upsert
             )
-            self.logger.info(f"更新数据成功: {result}")
+            self.logger.debug(f"更新数据成功: {result}")
             return result
         except PyMongoError as e:
             self.logger.error(f"更新数据失败: {e}")
@@ -129,7 +129,7 @@ class Database:
         try:
             collection = self.db[collection_name]
             result = collection.update_many(query, {"$set": update_data})
-            self.logger.info(f"更新了 {result.modified_count} 条数据")
+            self.logger.debug(f"更新了 {result.modified_count} 条数据")
             return result.modified_count
         except PyMongoError as e:
             self.logger.error(f"批量更新数据失败: {e}")
@@ -146,7 +146,7 @@ class Database:
         try:
             collection = self.db[collection_name]
             result = collection.delete_one(query)
-            self.logger.info(f"删除数据成功: {result.deleted_count} 条")
+            self.logger.debug(f"删除数据成功: {result.deleted_count} 条")
             return result.deleted_count
         except PyMongoError as e:
             self.logger.error(f"删除数据失败: {e}")
@@ -163,7 +163,7 @@ class Database:
         try:
             collection = self.db[collection_name]
             result = collection.delete_many(query)
-            self.logger.info(f"删除了 {result.deleted_count} 条数据")
+            self.logger.debug(f"删除了 {result.deleted_count} 条数据")
             return result.deleted_count
         except PyMongoError as e:
             self.logger.error(f"删除数据失败: {e}")
@@ -180,7 +180,7 @@ class Database:
         try:
             collection = self.db[collection_name]
             count = collection.count_documents(query or {})
-            self.logger.info(f"查询到 {count} 条数据")
+            self.logger.debug(f"查询到 {count} 条数据")
             return count
         except PyMongoError as e:
             self.logger.error(f"统计数据失败: {e}")
