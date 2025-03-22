@@ -62,14 +62,14 @@ class Memory():
 
         logger.info("记忆库加载完成")
 
-    def rerank(self, query: str, docs: list[str]) -> list[MemoryPiece]:
+    def rerank(self, query: str, docs: list[str]) -> list[dict]:
         """
         在候选文档上执行重新排序
         """
 
-        reranked_docs = self.llm_api.send_request_rerank(query, docs)
+        reranking_result = self.llm_api.send_request_rerank(query, docs, reranking_k=10)
 
-        return reranked_docs
+        return reranking_result
 
     def recall(self, keywords: list[dict], summary: str) -> list[MemoryPiece]:
         """
@@ -85,32 +85,16 @@ class Memory():
         logger.info(f"查询与[{summary}]相关的{self.query_faiss_k}条记忆")
 
         # Step 1: 执行初步的 FAISS 查询，获取最相似的记忆
-        distances, indices = self.index.search(query_embedding.reshape(1, -1), self.query_faiss_k)
-
-        # 获取初步检索到的候选文档
-        retrieved_docs = []
-        for idx in indices[0]:
-            if idx != -1:
-                retrieved_docs.append([self.memory[idx]['summary'], self.memory[idx]['keywords']])  # 获取摘要
-
-        # 打印初步检索结果
-        logger.info("初步检索到的候选记忆：")
-        for i, (doc, dist) in enumerate(zip(retrieved_docs, distances[0])):
-            logger.info(f"{i}: {doc[0]}: {doc[1]} - 相似度：{dist}")
-
-        # Step 2: 使用 rerank 函数重新排序候选文档
-        reranked_memories = self.rerank(summary, [doc for i, (doc, dist) in enumerate(zip([i[0] for i in retrieved_docs], distances[0]))])['results']
-
-        # 返回重新排序的记忆
-        logger.info("重新排序后的记忆：")
-        for i in reranked_memories:
-            index = i['index']
-            logger.info(f"{index}: {retrieved_docs[index][0]}: {retrieved_docs[index][1]} - 相似度：{i['relevance_score']}")
-
+        _, indices = self.index.search(query_embedding.reshape(1, -1), self.query_faiss_k)
+        indices = indices[0]
+        reranking_result = self.rerank(summary, [self.memory[i]['summary'] for i in indices])
+        for i in reranking_result:
+            logger.info(f"[{self.memory[indices[i['index']]]['summary']}]:[{i['relevance_score']}]")
+        
 async def main():
     memory = Memory()
     await memory.load_memory()
-    query = "叶阑学日语是为了去京都吧。现在搁置了感觉计划要延后了。"
+    query = "群聊中大家互道晚安，但有人坚持要求发表情包。"
     memory.recall([],query)
 
 if __name__ == "__main__":

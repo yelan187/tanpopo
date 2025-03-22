@@ -120,7 +120,7 @@ class LLMAPI:
             "model": self.reranking_model,
             "query": query_string,
             "documents": documents,
-            "top_n": global_config.memory_config['reranking_k'],
+            "top_n": reranking_k,
             "return_documents": False,
             "max_chunks_per_doc": 1024,
             "overlap_tokens": 80,
