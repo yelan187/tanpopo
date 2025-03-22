@@ -117,23 +117,24 @@ class Memory():
             for group_id in global_config.group_talk_allowed:
                 chat_history = await self.bot.message_manager.get_all_messages(group_id, False)
                 if chat_history == []:
-                    continue                
+                    continue
                 current_message = chat_history[-1]
                 analysis_result = self.llm_api.semantic_analysis(current_message, chat_history)
 
                 new_summary = analysis_result['summary']
-                reranked_result,new_embedding = self.get_reranked_result(new_summary)
-                if not reranked_result:
-                    continue
+
+                reranked_result, new_embedding = self.get_reranked_result(new_summary)
+                
+                logger.debug(reranked_result[0]['relevance_score'])
                 if reranked_result[0]['relevance_score'] > self.compression_threshold:
-                    logger.debug(f"压缩记忆: {new_summary}")
+                    logger.debug(f"记忆被压缩")
                     continue
                 
                 new_time = int(datetime.now(global_config.time_zone).timestamp())
                 new_keywords = analysis_result['keywords']
                 logger.info(f"添加新记忆: {new_summary} - {new_keywords}")
                 new_memory_item = {
-                    "_id": len(self.memory) + 1,
+                    "_id": len(self.memory),
                     "summary": new_summary,
                     "embedding": new_embedding.tolist(),
                     "keywords": new_keywords,
@@ -167,7 +168,7 @@ class Memory():
             self.biulding_started = True
             self.task = asyncio.create_task(self.build_memory())
 
-    def get_reranked_result(self,summary:str,faiss_k=None,reranking_k=None,recall_threshold=None) -> list:
+    def get_reranked_result(self,summary:str,faiss_k=None,reranking_k=None) -> list:
         
         '''
         reranked_result = [
@@ -178,10 +179,10 @@ class Memory():
             ...
         ]
         '''
-        recall_threshold = self.recall_threshold if recall_threshold is None else recall_threshold
         faiss_k = self.query_faiss_k if faiss_k is None else faiss_k
         reranking_k = self.reranking_k if reranking_k is None else reranking_k
         query_embedding:np.array = self.llm_api.send_request_embedding(summary)
+        query_embedding = query_embedding / np.linalg.norm(query_embedding)
         logger.info(f"查询与[{summary}]相关的{faiss_k}条记忆")
         _, indices = self.index.search(query_embedding.reshape(1,-1),faiss_k)
 
@@ -189,11 +190,8 @@ class Memory():
         reranked_result:list[dict] = self.llm_api.send_request_rerank(summary,[self.memory[i]['summary'] for i in doc_indexes], reranking_k)
         res = []
         for i in range(len(reranked_result)):
-            if reranked_result[i]['relevance_score'] < recall_threshold:
-                continue
             reranked_result[i]["index"] = int(doc_indexes[i])
             res += [reranked_result[i]]
-        
         return res,query_embedding
 
     async def update_memory_strength(self,_id:list[int],delta:float):
@@ -216,11 +214,12 @@ class Memory():
         reranked_result,_ = self.get_reranked_result(summary)
 
         await self.update_memory_strength([i['index'] for i in reranked_result],self.strength_delta)
-        if reranked_result == []:
+        filtered_reranked_result = [i for i in reranked_result if i['relevance_score'] > self.recall_threshold]
+        if filtered_reranked_result == []:
             return []
         
         associates = []
-        for i in reranked_result:
+        for i in filtered_reranked_result:
             associates += self.memory[i['index']]['associates']
         associates = list(set(associates))
         

@@ -40,7 +40,7 @@ class Config:
 
     memory_config = {
         "memory_table_name": "memory",
-        "build_interval": 600,
+        "build_interval": 60,
         "embedding_dim": 1024,
         "query_faiss_k": 10,
         "reranking_k": 3,
@@ -51,7 +51,7 @@ class Config:
         "build_associate_num": 3,
         "forget_interval": 3600,
         "forget_threshold": 0.2,
-        "recall_threshold": 0.8
+        "recall_threshold": 0.2
     }
 
     memes_config = {
