@@ -2,6 +2,7 @@ test/
 img/
 tmp/
 __pycache__/
+script/*.png
 
 image.db
 .DS_Store
