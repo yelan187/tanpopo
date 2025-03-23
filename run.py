@@ -3,6 +3,7 @@ import asyncio
 from src.ws import WS
 from src.bot.bot import Bot
 from src.bot.logger import register_logger
+from src.bot.config import global_config
 
 logger = register_logger('main')
 
@@ -16,6 +17,6 @@ async def main(ws:WS):
                 await bot.handle_message(res)
 
 if __name__ == '__main__':
-    ws = WS(host='127.0.0.1', port=3001, role='client')
+    ws = WS(host=global_config.ws_settings['host'], port=global_config.ws_settings['port'], role='client')
     logger.info('监听进程启动')
     asyncio.run(main(ws))

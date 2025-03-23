@@ -1,8 +1,6 @@
 test/
-img/
 tmp/
+.git
 __pycache__/
-
 .DS_Store
-
 test*

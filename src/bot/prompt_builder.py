@@ -68,7 +68,7 @@ class PromptBuilder:
         return prompt
 
     def _prompt_actions(self,**kargs):
-        actions = ";".join(['艾特发送者','发送表情包'])
+        actions = ";".join(global_config.bot_actions)
         return f"<Actions>可执行的动作:{actions}</Actions>"
 
     def build_sys_prompt(self,**kargs):
