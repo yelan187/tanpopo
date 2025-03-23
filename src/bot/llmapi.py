@@ -143,7 +143,7 @@ class LLMAPI:
                     "content": [
                         {
                             "type": "text",
-                            "text": "请用简短的几句话描述这张图片的内容和可能表达的情感，**不要**超过50字, **不要**使用任何特殊符号,**不要**回答内容",
+                            "text": "请根据图像或表情包内容生成几句简短的描述，提到图像中人物的表情、动作、物品或其他明显特征,以及可能表达的情感。回答尽可能简短，**50字以内**,**不要**使用任何特殊符号",
                         },
                         {
                             "type": "image_url",
@@ -172,7 +172,7 @@ class LLMAPI:
                 {"role": "user", "content": user_prompt},
             ],
             stream=self.stream,
-            response_format={"type": "json_object"},
+            # response_format={"type": "json_object"},
         )
         if self.stream:
             resp = ""
@@ -180,5 +180,5 @@ class LLMAPI:
                 resp += chunk.choices[0].delta.content
         else:
             resp = response.choices[0].message.content
-        logger.info("response: %s", resp)
+        # logger.info("response: %s", resp)
         return json.loads(resp)

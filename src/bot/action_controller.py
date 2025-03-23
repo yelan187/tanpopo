@@ -28,7 +28,7 @@ class ActionController:
 
     async def send_text(self,part:str,message:MessageEvent,is_first:bool):
         msg = []
-        if is_first and (random.random() < 0.5 or datetime.now(global_config.time_zone).timestamp() - datetime.strptime(message.time, "%Y-%m-%d %H:%M:%S").timestamp() > 15 ):
+        if is_first and (random.random() < 0.5 or datetime.now(global_config.time_zone).timestamp() - datetime.strptime(message.time, "%Y-%m-%d %H:%M:%S").timestamp() > 20 ):
             reply_id = message.message_id
             msg.append({"type": "reply", "data": {"id": reply_id}})
 
@@ -48,6 +48,23 @@ class ActionController:
             tmp["params"]["group_id"] = message.group_id
         logger.info(f"bot回复->{part}")
         await self.bot.ws.send(json.dumps(tmp))
+        await self.push_bot_msg(msg,message)
+
+    async def push_bot_msg(self,msg:list, messageEvent: MessageEvent) -> None:
+        sent_msg = {
+            "self_id": messageEvent.self_id,
+            "user_id": messageEvent.self_id,
+            "group_id": messageEvent.group_id,
+            "sender": {
+                "user_id": messageEvent.self_id,
+                "nickname": global_config.bot_config["nickname"],
+            },
+            "message": msg
+        }
+        sent_message = MessageEvent(sent_msg)
+        await self.bot.message_manager.push_message(
+            messageEvent.group_id, False, sent_message
+        )
 
     async def send_image(self,base64_img:str,message:MessageEvent):
         tmp = {

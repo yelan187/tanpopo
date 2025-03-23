@@ -51,9 +51,6 @@ class Bot:
         await self.message_manager.push_message(
             messageEvent.get_id(), messageEvent.is_private(), messageEvent
         )
-        chat_history = await self.message_manager.get_all_messages(
-            messageEvent.get_id(), messageEvent.is_private()
-        )
         if messageEvent.is_group():
             self.nickname_manager.update_after_recv(messageEvent)
             desriptions = await self.image_manager.create_img_description_update(*messageEvent.get_imgs_url())
@@ -109,7 +106,7 @@ class Bot:
             "group_id":messageEvent.group_id,
             "sender":{
                 "user_id":messageEvent.self_id,
-                "nickname":"我"
+                "nickname":global_config.bot_config["nickname"],
             },
             "message":[
                 {

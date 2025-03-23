@@ -16,6 +16,8 @@ class Memory:
         self.llm_api = LLMAPI(global_config.gpt_settings)
 
     def insert_initial_memories(self):
+        if self.db.find("memory") != []:
+            return
         self.db.delete_many(global_config.memory_config['memory_table_name'], {})
 
         initial_memories = [
