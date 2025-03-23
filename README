@@ -1,0 +1,3 @@
+### 通过docker部署
+
+```NAPCAT_UID=$(id -u) NAPCAT_GID=$(id -g) docker-compose up -d```
