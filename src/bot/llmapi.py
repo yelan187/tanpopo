@@ -6,7 +6,9 @@ from openai import OpenAI
 
 from .config import global_config
 from ..event import MessageEvent
+from .logger import register_logger
 
+logger = register_logger("llm_api")
 
 class LLMAPI:
     """
@@ -78,13 +80,13 @@ class LLMAPI:
         prompt += f"<CurrentMessage>现在**昵称**为{messageEvent.sender.nickname}的人说：{messageEvent.get_plaintext()}</CurrentMessage>"
         prompt += f"<Requirement>现在请你根据<ChatHistory>和<CurrentMessage>标签标出的内容,分析出以下信息："
 
-        prompt += f"""1. **CurrentMessage** 的 **关键词** (四个词左右,一定要**有标志性**,可以是动词,名词,人物等)"""
+        prompt += f"""1. **ChatHistory** 的 **关键词** (两个词左右,一定要 **有标志性**,可以是动词,名词,人物等)"""
         prompt += f"""2. 听到这些对话后, **你** 的情感 (**一个准确的词语**)(注意,要表达的是 **你自己的情感**)"""
-        prompt += f"""3. 根据 **ChatHistory** ,生成一段 **摘要** 概括你刚刚寻找到的 **关键词** (**一个简短的句子**,可以侧重于某个你认为最重要的关键词)"""
+        prompt += f"""3. 根据 **ChatHistory** ,生成一段 **摘要** 概括你刚刚寻找到的 **关键词** (**一个简短的句子**,侧重于某个你认为最重要的关键词,不能笼统)"""
 
         prompt += f"""并打包为一个 json 发给我,json 格式如下:"""
 
-        prompt += f"""{{"keywords": ["关键词1","关键词2","关键词3","关键词4","关键词5"],"emotion": "情感","summary": "摘要"}}"""
+        prompt += f"""{{"keywords": ["关键词1","关键词2"],"emotion": "情感","summary": "摘要"}}"""
 
         prompt += f"""</Requirement>"""
 
@@ -155,7 +157,7 @@ class LLMAPI:
         )
         return response.choices[0].message.content
 
-    def send_request_text_full(self, sys_prompt: str,user_prompt: str):
+    def send_request_text_full(self, sys_prompt: str,user_prompt: str) -> dict:
         """
         发送文本请求
 
@@ -170,12 +172,13 @@ class LLMAPI:
                 {"role": "user", "content": user_prompt},
             ],
             stream=self.stream,
-            response_format={"type": "json_object"},
+            # response_format={"type": "json_object"},
         )
         if self.stream:
             resp = ""
             for chunk in response:
                 resp += chunk.choices[0].delta.content
-            return json.loads(resp)
         else:
-            return json.loads(response.choices[0].message.content)
+            resp = response.choices[0].message.content
+        logger.info("response: %s", resp)
+        return json.loads(resp)

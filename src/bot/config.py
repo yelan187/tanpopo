@@ -26,7 +26,8 @@ class Config:
     gpt_settings = {
         "api_key": "sk-phlbcwawejllfeldnbgxonvrpokfwoeahkdtfzzbjgekrafv",
         "base_url": "https://api.siliconflow.cn/v1",
-        "chat_model": "deepseek-ai/DeepSeek-V3",
+        # "chat_model": "deepseek-ai/DeepSeek-V3",
+        "chat_model": "deepseek-ai/DeepSeek-R1",
         "image_model": "Qwen/Qwen2-VL-72B-Instruct",
         "semantic_analysis_model": "Qwen/Qwen2.5-32B-Instruct",
         "embedding_model":"BAAI/bge-large-zh-v1.5",
@@ -57,7 +58,7 @@ class Config:
         "build_associate_num": 2,
         "forget_interval": 3600,
         "forget_threshold": 0.2,
-        "recall_threshold": 0.2
+        "recall_threshold": 0.6
     }
 
     memes_config = {

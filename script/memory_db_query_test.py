@@ -67,7 +67,7 @@ class Memory():
         在候选文档上执行重新排序
         """
 
-        reranking_result = self.llm_api.send_request_rerank(query, docs, reranking_k=10)
+        reranking_result = self.llm_api.send_request_rerank(query, docs, reranking_k=3)
 
         return reranking_result
 
@@ -89,12 +89,17 @@ class Memory():
         indices = indices[0]
         reranking_result = self.rerank(summary, [self.memory[i]['summary'] for i in indices])
         for i in reranking_result:
+            associates = self.memory[indices[i['index']]]['associates']
+            associated_memory = [self.db.find_one(global_config.memory_config['memory_table_name'], {'hash': i}) for i in associates]
+            associated_memory.sort(key=lambda x: x['strength'], reverse=True)
             logger.info(f"[{self.memory[indices[i['index']]]['summary']}]:[{i['relevance_score']}]")
+            for j in associated_memory:
+                logger.debug(f"关联记忆：[{j['summary']}]:[{j['strength']}]")
         
 async def main():
     memory = Memory()
     await memory.load_memory()
-    query = "WuYan bot 提到长时间歇着容易长草，大家纷纷找乐子"
+    query = "糖霜蒲公英:有人能来聊聊天吗"
     memory.recall([],query)
 
 if __name__ == "__main__":

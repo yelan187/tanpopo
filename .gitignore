@@ -2,6 +2,7 @@ test/
 img/
 tmp/
 __pycache__/
+.VSCodeCounter/
 script/*.png
 
 .DS_Store

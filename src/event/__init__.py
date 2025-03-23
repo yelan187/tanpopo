@@ -25,13 +25,13 @@ class MessageEvent:
             return
         self.message.update_discriptions(discriptions)
 
-    def get_plaintext(self):
+    def get_plaintext(self,with_at:bool=True):
         prefix = ""
         if self.at_list!=[]:
             for i in self.at_list:
                 prefix += f"@{i} "
         
-        plaintext = prefix
+        plaintext = prefix if with_at else ""
         for segment in self.message.segments:
             if segment.type == 'text':
                 plaintext += segment.data.get('text')
@@ -69,32 +69,19 @@ class MessageEvent:
 
         return  (urls,is_meme)
 
-    def is_tome(self):
-        for segment in self.message.segments:
-            if segment.type == 'at':
-                if segment.data.get('qq')=="all":
-                    tmp = ["all"]
-                    break
-                else:
-                    tmp.append(segment.data.get('qq'))
-        return tmp
-
     def get_id(self):
         return self.user_id if self.is_private() else self.group_id
-
 
 class Segment:
     def __init__(self, type=None, data=None):
         self.type = type
         self.data = data
 
-
 class Sender:
     def __init__(self, data=None):
         self.user_id = data.get('user_id')
         self.nickname = data.get('nickname')
         self.card = data.get('card')
-
 
 class Message:
     def __init__(self, segments=None):
