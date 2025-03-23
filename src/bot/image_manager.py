@@ -36,6 +36,9 @@ class ImageManager:
         embeddings = []
         for l in data:
             embeddings.append(np.array(l['embedding']))
+        if len(embeddings) == 0:
+            logger.warning("表情包数据为空")
+            return
         self.index.add(np.array(embeddings))
         self.data_length = len(embeddings)
         logger.info(f"表情包数据加载完成，共 {self.data_length} 个")
