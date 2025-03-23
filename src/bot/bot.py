@@ -57,6 +57,11 @@ class Bot:
         if messageEvent.is_group():
             self.nickname_manager.update_after_recv(messageEvent)
             desriptions = await self.image_manager.create_img_description_update(*messageEvent.get_imgs_url())
+            if desriptions != []:
+                messageEvent.update_discriptions(desriptions)
+            chat_history = await self.message_manager.update_chat_history(
+                messageEvent.get_id(), messageEvent.is_private(),messageEvent
+            )
             willing = await self.willing_manager.change_willing_after_receive(
                 messageEvent
             )  # 收到消息时更新回复意愿
@@ -68,7 +73,7 @@ class Bot:
                 analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
                 relavant_memories = await self.memory.recall(analysis_result.get("summary"))
                 logger.debug(f"当前上下文摘要->{analysis_result.get('summary')}")
-                
+
                 user_prompt = self.prompt_builder.build_user_prompt(
                     current_message=messageEvent,
                     chat_history=chat_history,

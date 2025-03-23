@@ -94,7 +94,7 @@ class Memory():
 async def main():
     memory = Memory()
     await memory.load_memory()
-    query = "熬夜写代码不仅容易掉头发，还影响效率。"
+    query = "WuYan bot 提到长时间歇着容易长草，大家纷纷找乐子"
     memory.recall([],query)
 
 if __name__ == "__main__":
