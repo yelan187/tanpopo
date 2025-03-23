@@ -118,7 +118,10 @@ class Memory():
                 chat_history = await self.bot.message_manager.get_all_messages(group_id, False)
                 if chat_history == []:
                     continue
-                current_message = chat_history[-1]
+                try:
+                    current_message = chat_history[-1]
+                except:
+                    continue
                 analysis_result = self.llm_api.semantic_analysis(current_message, chat_history)
 
                 new_summary = analysis_result['summary']

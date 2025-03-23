@@ -78,9 +78,9 @@ class LLMAPI:
         prompt += f"<CurrentMessage>现在**昵称**为{messageEvent.sender.nickname}的人说：{messageEvent.get_plaintext()}</CurrentMessage>"
         prompt += f"<Requirement>现在请你根据<ChatHistory>和<CurrentMessage>标签标出的内容,分析出以下信息："
 
-        prompt += f"""1. **CurrentMessage** 的 **关键词** (四个词左右,一定要**有标志性**,可以**被联想到**)"""
+        prompt += f"""1. **CurrentMessage** 的 **关键词** (四个词左右,一定要**有标志性**,可以是动词,名词,人物等)"""
         prompt += f"""2. 听到这些对话后, **你** 的情感 (**一个准确的词语**)(注意,要表达的是 **你自己的情感**)"""
-        prompt += f"""3. 根据关键词,主题,情感等,生成 **ChatHistory** 的 **摘要** (**一个简短的句子**)"""
+        prompt += f"""3. 根据 **ChatHistory** ,生成一段 **摘要** 概括你刚刚寻找到的 **关键词** (**一个简短的句子**,可以侧重于某个你认为最重要的关键词)"""
 
         prompt += f"""并打包为一个 json 发给我,json 格式如下:"""
 

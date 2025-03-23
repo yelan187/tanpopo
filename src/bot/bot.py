@@ -91,7 +91,6 @@ class Bot:
                         await asyncio.sleep(len(part) // 2)
                     await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
                     await self.push_bot_msg(messageEvent,part)
-                    await asyncio.sleep(len(part) // 2)
                 # meme = await self.image_manager.match_meme(raw_resp)
                 # if random.random() < 1:
                 #     await self.ws.send(self.wrap_image(messageEvent.message_type,messageEvent.group_id,meme))
