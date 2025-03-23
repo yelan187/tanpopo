@@ -172,7 +172,7 @@ class LLMAPI:
                 {"role": "user", "content": user_prompt},
             ],
             stream=self.stream,
-            # response_format={"type": "json_object"},
+            response_format={"type": "json_object"},
         )
         if self.stream:
             resp = ""
