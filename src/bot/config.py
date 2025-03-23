@@ -13,7 +13,8 @@ class Config:
         "chat_history",
         "current_msg",
         "memory",
-        
+        "actions",
+        "basic"
     ]
 
     gpt_settings = {

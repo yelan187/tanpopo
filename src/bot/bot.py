@@ -13,6 +13,7 @@ from .nickname_manager import NicknameManager
 from .willing_manager import WillingManager
 from .logger import register_logger
 from .image_manager import ImageManager
+from .action_controller import ActionController
 from ..ws import WS
 
 logger = register_logger("bot", global_config.log_level)
@@ -23,11 +24,12 @@ class Bot:
         self.prompt_builder = PromptBuilder(global_config.enabled_prompts)
         self.llm_api = LLMAPI(global_config.gpt_settings)
         self.message_manager = MessageManager()
-        self.schedule_generator = ScheduleGenerator()
+        # self.schedule_generator = ScheduleGenerator()
         self.willing_manager = WillingManager()
         self.nickname_manager = NicknameManager()
         self.image_manager = ImageManager()
         self.memory = Memory(self)
+        self.action_controller = ActionController(self)
 
         asyncio.create_task(self.message_manager.start_task())
         asyncio.create_task(self.image_manager.load_memes())
@@ -62,7 +64,7 @@ class Bot:
                 await self.willing_manager.change_willing_if_thinking(
                     messageEvent.group_id
                 )
-                routine = self.schedule_generator.get_current_task()
+                # routine = self.schedule_generator.get_current_task()
                 analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
                 relavant_memories = await self.memory.recall(analysis_result.get("summary"))
                 logger.debug(f"当前上下文摘要->{analysis_result.get('summary')}")
@@ -71,7 +73,7 @@ class Bot:
                     current_message=messageEvent,
                     chat_history=chat_history,
                     relavant_memories=relavant_memories,
-                    routine=routine,
+                    # routine=routine,
                     img_descriptions=desriptions
                 )
                 sys_prompt = self.prompt_builder.build_sys_prompt()
@@ -79,59 +81,16 @@ class Bot:
                 json_resp = self.llm_api.send_request_text_full(sys_prompt,user_prompt)
                 logger.warning(f"原始响应->{json_resp}")
                 resp = json_resp.get("reply",None)
-                if resp is None:
+                if resp == None:
                     logger.warning("回复无法解析")
                     return
-                for i in range(len(resp)):
-                    part = resp[i]
-                    if part == "":
-                        continue
-                    logger.info(f"bot回复->{part}")
-                    if i != 0:
-                        await asyncio.sleep(len(part) // 2)
-                    await self.ws.send(self.wrap_message(messageEvent.message_type,messageEvent.group_id,part))
-                    await self.push_bot_msg(messageEvent,part)
-                # meme = await self.image_manager.match_meme(raw_resp)
-                # if random.random() < 1:
-                #     await self.ws.send(self.wrap_image(messageEvent.message_type,messageEvent.group_id,meme))
+                actions = json_resp.get("actions",[])
+                actions.append("回复")
+                await self.action_controller.handle(actions,resp=resp,message=messageEvent)
             else:
                 logger.info(f"bot选择不回复")
                 return
-
-    def wrap_image(self,message_type,id,image_base64)->str:
-        tmp = {
-            "action": "send_msg",
-            "params": {
-                "message_type": message_type,
-                "message": [
-                    {
-                        "type": "image",
-                        "data":{
-                            "file": "base64://"+image_base64,
-                            "sub_type":1
-                        }
-                    }
-                ]
-            },
-        }
-        if message_type == "private":
-            tmp["params"]["user_id"] = id
-        else:
-            tmp["params"]["group_id"] = id
-        return json.dumps(tmp)
-
-    def wrap_message(self, message_type, id, message: str) -> str:
-        tmp = {
-            "action": "send_msg",
-            "params": {"message_type": message_type, "message": message},
-        }
-        if message_type == "private":
-            tmp["params"]["user_id"] = id
-        else:
-            tmp["params"]["group_id"] = id
-
-        return json.dumps(tmp)
-
+    
     async def push_bot_msg(self, messageEvent:MessageEvent, part:str) -> None:
         sent_msg = {
             "self_id":messageEvent.self_id,
