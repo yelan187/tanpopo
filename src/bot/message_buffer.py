@@ -17,6 +17,13 @@ class MessageManager:
         self.group_buffers: dict[int, deque] = {}  # 存储不同群聊的消息缓存
         self.private_buffers: dict[int, deque] = {}  # 存储不同私聊的消息缓存
 
+    async def update_chat_history(self,idd:int,is_private:bool, message: MessageEvent) -> list[MessageEvent]:
+        if is_private:
+            self.private_buffers[idd][-1] = message
+        else:
+            self.group_buffers[idd][-1] = message
+        return await self.get_all_messages(idd,is_private)
+        
     async def revoke_message_task(self):
         while True:
             await asyncio.sleep(self.message_revoke_interval)

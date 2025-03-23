@@ -20,13 +20,27 @@ class MessageEvent:
     def is_private(self):
         return self.message_type == 'private'
 
+    def update_discriptions(self,discriptions):
+        if discriptions == []:
+            return
+        self.message.update_discriptions(discriptions)
+
     def get_plaintext(self):
         prefix = ""
         if self.at_list!=[]:
             for i in self.at_list:
                 prefix += f"@{i} "
-        return prefix+"".join([segment.data.get('text') for segment in self.message.segments if segment.type == 'text'])
-
+        
+        plaintext = prefix
+        for segment in self.message.segments:
+            if segment.type == 'text':
+                plaintext += segment.data.get('text')
+            elif segment.type == 'image':
+                plaintext += "[图片]"
+                d = segment.data.get('discription')
+                plaintext += d if d is not None else ""
+        return plaintext
+    
     def get_at_list(self):
         tmp = []
         for segment in self.message.segments:
@@ -85,3 +99,9 @@ class Sender:
 class Message:
     def __init__(self, segments=None):
         self.segments = [Segment(**segment) for segment in segments] if segments else []
+
+    def update_discriptions(self, discriptions:list[str]):
+        for segment in self.segments:
+            if segment.type == 'image':
+                segment.data['discription'] = discriptions[0]
+                discriptions = discriptions[1:]

@@ -18,7 +18,7 @@ class WS:
 
     async def connect(self):
         if self.role == 'client':
-            self.ws = await websockets.connect(self.url)
+            self.ws = await websockets.connect(self.url,ping_interval=6000, ping_timeout=3000)
             # print(f"Client connected to {self.url}")
         elif self.role == 'server':
             self.ws = await websockets.serve(self.on_message, '0.0.0.0', self.port)

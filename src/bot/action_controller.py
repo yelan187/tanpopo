@@ -1,6 +1,9 @@
 import asyncio
 import json
+import random
+from datetime import datetime
 
+from .config import global_config
 from .logger import register_logger
 from ..event import MessageEvent
 
@@ -23,8 +26,12 @@ class ActionController:
                 logger.warning(f"未知动作{action}")
             await getattr(self,"_"+self.mapping[action][0],None)(**args)
 
-    async def send_text(self,part:str,message:MessageEvent):
+    async def send_text(self,part:str,message:MessageEvent,is_first:bool):
         msg = []
+        if is_first and (random.random() < 0.5 or datetime.now(global_config.time_zone).timestamp() - datetime.strptime(message.time, "%Y-%m-%d %H:%M:%S").timestamp() > 15 ):
+            reply_id = message.message_id
+            msg.append({"type": "reply", "data": {"id": reply_id}})
+
         at_id = getattr(self,"at_id",None)
         if at_id is not None:
             msg.append({"type": "at", "data": {"qq": at_id}})
@@ -70,12 +77,12 @@ class ActionController:
         logger.info("bot决定@发送者")
 
     async def _reply(self,message:MessageEvent,resp,**args):
-        b = False
+        is_first = True
         for part in resp:
-            if b:
+            if not is_first:
                 await asyncio.sleep(len(part)//2)
-            b = True
-            await self.send_text(part,message)
+            await self.send_text(part,message,is_first=is_first)
+            is_first = False
 
     async def _send_meme(self,message:MessageEvent,resp,**args):
         meme = await self.bot.image_manager.match_meme("。".join(resp))

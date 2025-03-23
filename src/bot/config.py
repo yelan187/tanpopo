@@ -28,7 +28,7 @@ class Config:
         "base_url": "https://api.siliconflow.cn/v1",
         "chat_model": "deepseek-ai/DeepSeek-V3",
         "image_model": "Qwen/Qwen2-VL-72B-Instruct",
-        "semantic_analysis_model": "Qwen/Qwen2-7B-Instruct",
+        "semantic_analysis_model": "Qwen/Qwen2.5-32B-Instruct",
         "embedding_model":"BAAI/bge-large-zh-v1.5",
         "reranking_model":"Pro/BAAI/bge-reranker-v2-m3",
         "stream": False,
@@ -54,7 +54,7 @@ class Config:
         "decrease_rate": 0.95,
         "keywords_num": 2,
         "compression_threshold": 0.9,
-        "build_associate_num": 3,
+        "build_associate_num": 2,
         "forget_interval": 3600,
         "forget_threshold": 0.2,
         "recall_threshold": 0.2
