@@ -1,0 +1,46 @@
+services:
+  napcat:
+    container_name: napcat
+    environment:
+      - TZ=Asia/Shanghai
+      - NAPCAT_UID=${NAPCAT_UID}
+      - NAPCAT_GID=${NAPCAT_GID} 
+    ports:
+      - 3001:3001
+      - 6099:6099
+    restart: unless-stopped
+    volumes:
+      - napcatQQ:/app/.config/QQ # 持久化 QQ 本体
+      - napcatCONFIG:/app/napcat/config # 持久化 NapCat 配置文件
+    image: mlikiowa/napcat-docker:latest
+
+  mongodb:
+    container_name: mongodb
+    environment:
+      - TZ=Asia/Shanghai
+    expose:
+      - "27017"
+    restart: unless-stopped
+    volumes:
+      - mongodb:/data/db # 持久化 MongoDB 数据库
+      - mongodbCONFIG:/data/configdb # 持久化 MongoDB 配置文件
+    image: mongo:latest
+
+  tanpopo:
+    container_name: tanpopo
+    build: .
+    depends_on:
+      - mongodb
+      - napcat
+    environment:
+      - ENV=DOCKER
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
+    volumes:
+      - napcatCONFIG:/napcat
+
+volumes:
+  napcatQQ:
+  napcatCONFIG:
+  mongodb:
+  mongodbCONFIG:

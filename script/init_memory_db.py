@@ -3,7 +3,6 @@ import os
 from hashlib import md5
 from datetime import datetime
 import numpy as np
-import faiss
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

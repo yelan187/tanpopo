@@ -1,3 +1,5 @@
+import os
+
 from dataclasses import dataclass
 from datetime import timezone, timedelta
 
@@ -6,6 +8,10 @@ class Config:
     """
     bot全局配置
     """
+    ws_settings = {
+        "host":"127.0.0.1",
+        "port": 3001
+    }
 
     enabled_prompts = [
         "personal_information",        
@@ -64,9 +70,19 @@ class Config:
         "database_name":"tanpopo"
     }
 
+    bot_actions = [
+        "艾特发送者",
+        "发送表情包"
+    ]
+
     message_revoke_interval = 300
 
     time_zone = timezone(timedelta(hours=+8))   # UTC+8
     log_level = "DEBUG"
 
+
 global_config = Config()
+if os.getenv("ENV") == "DOCKER":
+    global_config.ws_settings['host'] = "napcat"
+    global_config.database_config['uri'] = "mongodb://mongodb:27017/"
+    print("Using docker config")

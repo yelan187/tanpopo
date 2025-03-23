@@ -1,9 +1,6 @@
 test/
-img/
 tmp/
+.git
 __pycache__/
-script/*.png
-
 .DS_Store
-
 test*
