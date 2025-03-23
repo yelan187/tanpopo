@@ -6,6 +6,7 @@ import asyncio
 import numpy as np
 import faiss
 
+from ..event import MessageEvent
 from .database import Database
 from .llmapi import LLMAPI
 from .config import global_config
@@ -14,10 +15,12 @@ from .logger import register_logger
 logger = register_logger("memory")
 
 class MemoryPiece:
-    def __init__(self,memory_piece:dict,associate:bool):
+    def __init__(self,memory_piece:dict,associate:bool=False):
         self.summary:str = memory_piece['summary']
         self.associate:bool = associate
         self.create_time:str = datetime.fromtimestamp(memory_piece['create_time']).strftime("%Y-%m-%d")
+        self.is_private:bool = memory_piece['is_private']
+        self.pg_id:int = memory_piece['pg_id']
 
 class Memory():
     def __init__(self,bot):
@@ -176,7 +179,9 @@ class Memory():
         '''
         reranked_result = [
             {
-                "index": 1, # **原记忆**中的索引
+                "memory": {
+                    ......
+                },
                 "relevance_score": 0.9,
             },
             ...
@@ -193,8 +198,11 @@ class Memory():
         reranked_result:list[dict] = self.llm_api.send_request_rerank(summary,[self.memory[i]['summary'] for i in doc_indexes], reranking_k)
         res = []
         for i in range(len(reranked_result)):
-            reranked_result[i]["index"] = int(doc_indexes[i])
-            res += [reranked_result[i]]
+            res.append({
+                "memory": self.memory[int(doc_indexes[i])],
+                "relevance_score": reranked_result[i]['relevance_score'],
+            })
+            
         return res,query_embedding
 
     async def update_memory_strength(self,_id:list[int],delta:float):
@@ -202,37 +210,34 @@ class Memory():
             self.memory[index]['strength'] += delta
             self.db.update_one(self.table_name, {"_id": index}, {"$set": {"strength": self.memory[index]['strength']}})
 
-    def select_associated_memories(self,memories:list[dict],k=2) -> list[dict]:
-        selected_items = random.choices(memories, weights=[i['strength'] for i in memories], k=k)
+    def select_associated_memories(self,ids:list[int],k=1) -> list[int]:
+        selected_items = random.choices(ids, weights=[self.memory[i]['strength'] for i in ids], k=k)
         return selected_items
 
-    async def recall(self,summary:str) -> list[MemoryPiece]:
+    async def recall(self,current_message:MessageEvent) -> list[MemoryPiece]:
         """
-        根据摘要更新并返回相关记忆
+        根据当前消息更新并返回相关记忆
         """
         memory_pieces:list[MemoryPiece] = []
-        
-        if summary == "":
-            return {}
-        reranked_result,_ = self.get_reranked_result(summary)
+        relevant_memory = []
+        plaintext = current_message.sender.nickname
+        plaintext += ":"
+        plaintext += current_message.get_plaintext(with_at=False)
+        if current_message.is_tome:
+            plaintext = f"{global_config.bot_config['nickname']}," + plaintext
 
-        await self.update_memory_strength([i['index'] for i in reranked_result],self.strength_delta)
-        filtered_reranked_result = [i for i in reranked_result if i['relevance_score'] > self.recall_threshold]
-        if filtered_reranked_result == []:
-            return []
-        
-        associates = []
-        for i in filtered_reranked_result:
-            associates += self.memory[i['index']]['associates']
-        associates = list(set(associates))
-        
-        if associates != []:
-            associated_memories:list[dict] = [self.db.find_one(self.table_name,{'hash':i}) for i in associates]
-            associated_memories = self.select_associated_memories(associated_memories)
-            memory_pieces += [MemoryPiece(i,associate=True) for i in associated_memories]
-            await self.update_memory_strength([i['_id'] for i in associated_memories],self.strength_delta)
+        reranked_result,_ = self.get_reranked_result(plaintext)
+        for i in range(len(reranked_result)):
+            if i == 0:
+                relevant_memory.append(reranked_result[i]['memory'])
+            else:
+                if reranked_result[i]['relevance_score'] > self.recall_threshold:
+                    relevant_memory.append(reranked_result[i]['memory'])
 
-        memory_pieces += [MemoryPiece(self.memory[i['index']],associate=False) for i in reranked_result]
+        for i in range(len(relevant_memory)):
+            memory_pieces.append(MemoryPiece(relevant_memory[i]))
+            await self.update_memory_strength([relevant_memory[i]['_id']],self.strength_delta)
+
         return memory_pieces
 
 '''

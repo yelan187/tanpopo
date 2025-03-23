@@ -1,6 +1,8 @@
 from .logger import register_logger
 from ..event import MessageEvent, Sender
 
+from .config import global_config
+
 logger = register_logger("nickname manager")
 
 class NicknameManager:
@@ -26,7 +28,7 @@ class NicknameManager:
     def known_after_recv(self, messageEvent:MessageEvent) -> None:
         key = str(messageEvent.sender.user_id)
         if str(messageEvent.self_id) not in self.id_nickname:
-            self.id_nickname[str(messageEvent.self_id)] = Nickname("我")
+            self.id_nickname[str(messageEvent.self_id)] = Nickname(global_config.bot_config["nickname"])
         if key not in self.id_nickname:
             self.id_nickname[key] = Nickname(messageEvent.sender.nickname)
             logger.debug(f'认识了 {self.id_nickname[key].nickname}[ID: {messageEvent.sender.user_id}]')
@@ -37,7 +39,7 @@ class NicknameManager:
         tmp_key = list(self.id_nickname.keys())
         for i in tmp_key:
             self.id_nickname[i].weight -= 0.05
-            if self.id_nickname[i].weight < 0 and self.id_nickname[i].nickname!="我":
+            if self.id_nickname[i].weight < 0 and self.id_nickname[i].nickname!=global_config.bot_config["nickname"]:
                 logger.debug(f'遗忘 {self.id_nickname[i].nickname}[ID: {i}]')
                 self.id_nickname.pop(i)
     

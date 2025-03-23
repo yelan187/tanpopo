@@ -70,9 +70,7 @@ class Bot:
                     messageEvent.group_id
                 )
                 # routine = self.schedule_generator.get_current_task()
-                analysis_result = self.llm_api.semantic_analysis(messageEvent,chat_history)
-                relavant_memories = await self.memory.recall(analysis_result.get("summary"))
-                logger.debug(f"当前上下文摘要->{analysis_result.get('summary')}")
+                relavant_memories = await self.memory.recall(messageEvent)
 
                 user_prompt = self.prompt_builder.build_user_prompt(
                     current_message=messageEvent,
@@ -83,7 +81,15 @@ class Bot:
                 )
                 sys_prompt = self.prompt_builder.build_sys_prompt()
                 logger.debug(f"构建prompt->{user_prompt}")
-                json_resp = self.llm_api.send_request_text_full(sys_prompt,user_prompt)
+                success = False
+                while not success:
+                    logger.info(f"bot选择回复")
+                    try:
+                        json_resp = self.llm_api.send_request_text_full(sys_prompt,user_prompt)
+                        success = True
+                    except:
+                        logger.error("请求失败,重新请求")
+                    
                 logger.warning(f"原始响应->{json_resp}")
                 resp = json_resp.get("reply",None)
                 if resp == None:
