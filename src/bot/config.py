@@ -1,5 +1,8 @@
 import os
+import shutil
+
 import yaml
+
 from dataclasses import dataclass, field
 from datetime import timezone, timedelta
 from typing import List, Dict
@@ -34,7 +37,7 @@ class Config:
             "embedding_model": "BAAI/bge-large-zh-v1.5",
             "reranking_model": "Pro/BAAI/bge-reranker-v2-m3",
             "stream": False,
-            "max_retry":5,
+            "max_retrys":3,
         }
     )
     bot_config: Dict[str, str] = field(
@@ -83,6 +86,13 @@ class Config:
     @staticmethod
     def from_yaml(yaml_file: str):
         """从YAML文件读取配置并加载到Config类实例中"""
+        if not os.path.exists(yaml_file):
+            # 如果配置文件不存在，从template文件夹复制配置文件
+            template_config_path = "template/config.yaml"
+            shutil.copy(template_config_path, yaml_file)
+            raise FileNotFoundError("配置文件不存在，已从template文件夹复制默认配置文件，请完善llm_auth等配置。")
+
+        # 读取配置文件
         with open(yaml_file, "r", encoding="utf-8") as file:
             config_data = yaml.safe_load(file)
 

@@ -125,8 +125,17 @@ class Memory():
                     current_message = chat_history[-1]
                 except:
                     continue
-                analysis_result = self.llm_api.semantic_analysis(current_message, chat_history)
-
+                success = False
+                cnt = global_config.llm_models['max_retrys']
+                while not success and cnt > 0:
+                    try:
+                        analysis_result = self.llm_api.semantic_analysis(current_message, chat_history)
+                        success = True
+                    except Exception as e:
+                        logger.error(f"语义分析出错->{e}")
+                        cnt -= 1
+                if not success:
+                    continue
                 new_summary = analysis_result['summary']
 
                 reranked_result, new_embedding = self.get_reranked_result(new_summary)

@@ -79,13 +79,14 @@ class Bot:
                 sys_prompt = self.prompt_builder.build_sys_prompt()
                 logger.debug(f"构建prompt->{user_prompt}")
                 success = False
-                cnt = 0
-                while not success and cnt < global_config.llm_models["max_retry"]:
+                cnt = global_config.llm_models["max_retrys"]
+                while not success and cnt > 0:
                     logger.info(f"bot选择回复")
                     try:
                         json_resp = self.llm_api.send_request_text_full(sys_prompt,user_prompt)
                         success = True
                     except Exception as e:
+                        cnt -= 1
                         logger.error(f"请求失败,重新请求->{e}")
                         
                     

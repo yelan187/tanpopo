@@ -90,23 +90,15 @@ class LLMAPI:
 
         prompt += f"""{{"keywords": ["关键词1","关键词2"],"emotion": "情感","summary": "摘要"}}"""
 
-        prompt += f"""</Requirement>"""
+        prompt += f"""注意，除了json字符串请不要输出多余内容</Requirement>"""
 
         response = self.client.chat.completions.create(
             model=self.chat_model,
             messages=[
                 {"role": "user", "content": prompt},
-            ],
-            stream=self.stream,
-            response_format={"type": "json_object"},
+            ]
         )
-
-        if self.stream:
-            resp = ""
-            for chunk in response:
-                resp += chunk.choices[0].delta.content
-        else:
-            resp = response.choices[0].message.content
+        resp = response.choices[0].message.content
         return json.loads(resp)
 
     def send_request_embedding(self, text: str):
