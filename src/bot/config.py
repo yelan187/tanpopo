@@ -88,7 +88,7 @@ class Config:
         """从YAML文件读取配置并加载到Config类实例中"""
         if not os.path.exists(yaml_file):
             # 如果配置文件不存在，从template文件夹复制配置文件
-            template_config_path = "template/config.yaml"
+            template_config_path = "template/config_template.yaml"
             shutil.copy(template_config_path, yaml_file)
             raise FileNotFoundError("配置文件不存在，已从template文件夹复制默认配置文件，请完善llm_auth等配置。")
 

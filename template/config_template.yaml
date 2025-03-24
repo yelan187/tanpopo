@@ -1,0 +1,63 @@
+ws_settings:
+  host: "127.0.0.1"
+  port: 3001
+
+enabled_prompts:
+  - "personal_information"
+  - "time"
+  - "chat_history"
+  - "current_msg"
+  - "memory"
+  - "actions"
+  - "basic"
+
+llm_auth:
+  api_key: "your_api_key"
+  base_url: "base_url"
+
+llm_models:
+  chat_model: "deepseek-ai/DeepSeek-V3"
+  image_model: "Qwen/Qwen2.5-VL-72B-Instruct"
+  semantic_analysis_model: "Qwen/Qwen2.5-32B-Instruct"
+  embedding_model: "BAAI/bge-large-zh-v1.5"
+  reranking_model: "Pro/BAAI/bge-reranker-v2-m3"
+  stream: false
+  max_retrys: 3
+
+bot_config:
+  personality: "你是一个大一学生，正在学习计算机科学，你性格不错，为人友善但有点腹黑"
+  nickname: "N0thing"
+
+group_talk_allowed:
+  - 233
+
+memory_config:
+  memory_table_name: "memory"
+  build_interval: 90
+  embedding_dim: 1024
+  query_faiss_k: 10
+  reranking_k: 3
+  strength_delta: 0.1
+  decrease_rate: 0.95
+  keywords_num: 2
+  compression_threshold: 0.9
+  build_associate_num: 2
+  forget_interval: 3600
+  forget_threshold: 0.2
+  recall_threshold: 0.6
+
+memes_config:
+  memes_table_name: "memes"
+  add_meme_probability: 0.5
+
+database_config:
+  uri: "mongodb://localhost:27017/"
+  database_name: "tanpopo"
+
+bot_actions_enabled:
+  - "艾特发送者"
+  - "发送表情包"
+
+message_revoke_interval: 300
+
+log_level: "INFO"
