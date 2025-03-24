@@ -14,12 +14,12 @@ from .llmapi import LLMAPI
 from .logger import register_logger
 from .config import global_config
 
-logger = register_logger("image manager")
+logger = register_logger("image manager",global_config.log_level)
 
 class ImageManager:
     def __init__(self):
         self.db = Database(global_config.database_config['database_name'],global_config.database_config['uri'])
-        self.llm_api = LLMAPI(global_config.gpt_settings)
+        self.llm_api = LLMAPI(global_config.llm_auth,global_config.llm_models)
         self.index = faiss.IndexFlatL2(1024)
         self.table_name = global_config.memes_config['memes_table_name']
         self.data_length = 0

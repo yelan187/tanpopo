@@ -7,7 +7,7 @@ from .config import global_config
 from .logger import register_logger
 from ..event import MessageEvent
 
-logger = register_logger("action controller")
+logger = register_logger("action controller",global_config.log_level)
 
 class ActionController:
     def __init__(self, bot):

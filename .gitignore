@@ -4,7 +4,7 @@ tmp/
 __pycache__/
 .VSCodeCounter/
 script/*.png
-
+config.yaml
 .DS_Store
 
 test*

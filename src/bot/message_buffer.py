@@ -5,7 +5,7 @@ from ..event import MessageEvent
 from .logger import register_logger
 from .config import global_config
 
-logger = register_logger("message manager")
+logger = register_logger("message manager",global_config.log_level)
 
 class MessageManager:
     def __init__(self, max_size: int=10):

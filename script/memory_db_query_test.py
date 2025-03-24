@@ -12,7 +12,7 @@ from src.bot.llmapi import LLMAPI
 from src.bot.config import global_config
 from src.bot.logger import register_logger
 
-logger = register_logger("memory")
+logger = register_logger("memory",global_config.log_level)
 
 class MemoryPiece:
     def __init__(self, summary: str, keywords: list[str]):

@@ -3,3 +3,4 @@ tmp/
 .git
 __pycache__/
 .DS_Store
+config.yaml

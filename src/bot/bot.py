@@ -22,7 +22,7 @@ logger = register_logger("bot", global_config.log_level)
 class Bot:
     def __init__(self, ws: WS):
         self.prompt_builder = PromptBuilder(global_config.enabled_prompts)
-        self.llm_api = LLMAPI(global_config.gpt_settings)
+        self.llm_api = LLMAPI(global_config.llm_auth,global_config.llm_models)
         self.message_manager = MessageManager()
         # self.schedule_generator = ScheduleGenerator()
         self.willing_manager = WillingManager()
@@ -79,13 +79,15 @@ class Bot:
                 sys_prompt = self.prompt_builder.build_sys_prompt()
                 logger.debug(f"构建prompt->{user_prompt}")
                 success = False
-                while not success:
+                cnt = 0
+                while not success and cnt < global_config.llm_models["max_retry"]:
                     logger.info(f"bot选择回复")
                     try:
                         json_resp = self.llm_api.send_request_text_full(sys_prompt,user_prompt)
                         success = True
-                    except:
-                        logger.error("请求失败,重新请求")
+                    except Exception as e:
+                        logger.error(f"请求失败,重新请求->{e}")
+                        
                     
                 logger.warning(f"原始响应->{json_resp}")
                 resp = json_resp.get("reply",None)

@@ -3,7 +3,7 @@ from ..event import MessageEvent, Sender
 
 from .config import global_config
 
-logger = register_logger("nickname manager")
+logger = register_logger("nickname manager",global_config.log_level)
 
 class NicknameManager:
     def __init__(self):

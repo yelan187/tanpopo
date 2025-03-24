@@ -21,7 +21,7 @@ class ScheduleGenerator:
         self.today_schedule: list[routine] = []
         self.today_schedule_text: str = ""
         self.date = datetime.now(global_config.time_zone).day
-        self.llm_api = LLMAPI(global_config.gpt_settings)
+        self.llm_api = LLMAPI(global_config.llm_auth,global_config.llm_models)
         self._init_today_schedule()
 
     def _init_today_schedule(self):

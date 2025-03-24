@@ -11,7 +11,7 @@ class Database:
         try:
             self.client = MongoClient(uri)
             self.db = self.client[db_name]
-            self.logger = register_logger('database',"INFO")
+            self.logger = register_logger('database',global_config.log_level)
             self.logger.debug(f"尝试连接数据库: {db_name}")
         except ServerSelectionTimeoutError as e:
             self.logger.error(f"无法连接到MongoDB: {e}")

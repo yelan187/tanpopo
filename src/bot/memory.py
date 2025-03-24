@@ -12,7 +12,7 @@ from .llmapi import LLMAPI
 from .config import global_config
 from .logger import register_logger
 
-logger = register_logger("memory")
+logger = register_logger("memory",global_config.log_level)
 
 class MemoryPiece:
     def __init__(self,memory_piece:dict,associate:bool=False):
@@ -31,7 +31,7 @@ class Memory():
         self.forgetting_started = False
         self.task = None
         self.lock = asyncio.Lock()
-        self.llm_api = LLMAPI(global_config.gpt_settings)
+        self.llm_api = LLMAPI(global_config.llm_auth,global_config.llm_models)
         self.dim = global_config.memory_config['embedding_dim']
         self.query_faiss_k=global_config.memory_config['query_faiss_k']
         self.reranking_k=global_config.memory_config['reranking_k']

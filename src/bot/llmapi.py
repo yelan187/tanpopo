@@ -8,22 +8,24 @@ from .config import global_config
 from ..event import MessageEvent
 from .logger import register_logger
 
-logger = register_logger("llm_api")
+logger = register_logger("llm api",global_config.log_level)
 
 class LLMAPI:
     """
     处理与llm交互
     """
 
-    def __init__(self, settings: dict):
-        self.client = OpenAI(api_key=settings["api_key"], base_url=settings["base_url"])
-        self.base_url = settings["base_url"]
-        self.chat_model = settings["chat_model"]
-        self.image_model = settings["image_model"]
-        self.semantic_analysis_model = settings["semantic_analysis_model"]
-        self.embedding_model = settings["embedding_model"]
-        self.reranking_model = settings["reranking_model"]
-        self.stream = settings["stream"]
+    def __init__(self, llm_auth: dict,llm_models:dict):
+        self.client = OpenAI(api_key=llm_auth["api_key"], base_url=llm_auth["base_url"])
+        self.api_key = llm_auth["api_key"]
+        self.base_url = llm_auth["base_url"]
+        self.chat_model = llm_models["chat_model"]
+        self.image_model = llm_models["image_model"]
+        self.semantic_analysis_model = llm_models["semantic_analysis_model"]
+        self.embedding_model = llm_models["embedding_model"]
+        self.reranking_model = llm_models["reranking_model"]
+        self.stream = llm_models
+        ["stream"]
 
     def send_request_text(self, prompt: str) -> str:
         """
@@ -128,7 +130,7 @@ class LLMAPI:
             "overlap_tokens": 80,
         }
         headers = {
-            "Authorization": "Bearer sk-phlbcwawejllfeldnbgxonvrpokfwoeahkdtfzzbjgekrafv",
+            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
         response = requests.request("POST", url, json=payload, headers=headers)
@@ -171,14 +173,6 @@ class LLMAPI:
                 {"role": "system", "content": sys_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            stream=self.stream,
-            # response_format={"type": "json_object"},
         )
-        if self.stream:
-            resp = ""
-            for chunk in response:
-                resp += chunk.choices[0].delta.content
-        else:
-            resp = response.choices[0].message.content
-        # logger.info("response: %s", resp)
+        resp = response.choices[0].message.content
         return json.loads(resp)

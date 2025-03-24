@@ -5,7 +5,7 @@ from src.bot.bot import Bot
 from src.bot.logger import register_logger
 from src.bot.config import global_config
 
-logger = register_logger('main')
+logger = register_logger('main',global_config.log_level)
 
 async def main(ws:WS):
     bot = Bot(ws=ws)
