@@ -97,7 +97,7 @@ class ActionController:
         is_first = True
         for part in resp:
             if not is_first:
-                await asyncio.sleep(len(part)//2)
+                await asyncio.sleep(len(part)//3)
             await self.send_text(part,message,is_first=is_first)
             is_first = False
 

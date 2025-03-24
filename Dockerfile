@@ -4,7 +4,7 @@ WORKDIR /tanpopo
 
 # 安装项目依赖
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 # 项目初始环境配置
 COPY . .
