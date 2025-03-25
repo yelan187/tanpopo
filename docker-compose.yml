@@ -38,6 +38,7 @@ services:
     restart: unless-stopped
     volumes:
       - napcatCONFIG:/napcat
+      - ./config.yaml:/tanpopo/config.yaml
 
 volumes:
   napcatQQ:
