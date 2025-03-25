@@ -3,6 +3,7 @@ import base64
 import asyncio
 import subprocess
 import hashlib
+import os
 from datetime import datetime
 
 from PIL import Image
@@ -24,6 +25,11 @@ class ImageManager:
         self.table_name = global_config.memes_config['memes_table_name']
         self.data_length = 0
         self.lock = asyncio.Lock()
+        script_dir = os.path.dirname(os.path.abspath(__file__))  # 获取当前脚本所在的绝对路径
+        project_root = os.path.abspath(os.path.join(script_dir, "../.."))
+        if not os.path.exists(os.path.join(project_root, "tmp")):
+            os.makedirs(os.path.join(project_root, "tmp"))
+        self.temp_path = os.path.join(project_root, "tmp","temp_image")
 
     async def load_memes(self):
         """
@@ -55,17 +61,17 @@ class ImageManager:
         """
         try:
             async with self.lock:
-                subprocess.run(["wget", url, "-O", "tmp/temp_image"], check=True)
-                img = Image.open("tmp/temp_image")
+                subprocess.run(["wget", url, "-O",self.temp_path], check=True)
+                img = Image.open(self.temp_path)
                 img.convert("RGB")
-                img.save("tmp/temp_image", "PNG")
-                f = open('tmp/temp_image','rb')
+                img.save(self.temp_path, "PNG")
+                f = open(self.temp_path,'rb')
                 hash_md5 = hashlib.md5()
                 for chunk in iter(lambda: f.read(4096), b""):
                     hash_md5.update(chunk)
                 hash = hash_md5.hexdigest()
                 data = self.db.find_one(self.table_name,{"hash":hash})
-                img_base64 = await self.encode_image('tmp/temp_image') 
+                img_base64 = await self.encode_image(self.temp_path) 
                 description = self.llm_api.create_image_description(img_base64)
                 if data is None and is_meme and self.decide_if_add():
                     embedding = self.llm_api.send_request_embedding(description)

@@ -61,9 +61,9 @@ class MessageManager:
         if is_private:
             async with self.lock:
                 if idd in self.private_buffers:
-                    return self.private_buffers[idd]
+                    return list(self.private_buffers[idd])
         else:
             async with self.lock:
                 if idd in self.group_buffers:
-                    return self.group_buffers[idd]
+                    return list(self.group_buffers[idd])
         return []
