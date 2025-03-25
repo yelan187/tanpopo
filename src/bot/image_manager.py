@@ -29,7 +29,8 @@ class ImageManager:
         project_root = os.path.abspath(os.path.join(script_dir, "../.."))
         if not os.path.exists(os.path.join(project_root, "tmp")):
             os.makedirs(os.path.join(project_root, "tmp"))
-        self.temp_path = os.path.join(project_root, "tmp","temp_image")
+        self.temp_raw_path = os.path.join(project_root, "tmp","temp_image")
+        self.temp_png_path = os.path.join(project_root, "tmp","temp_image.png")
 
     async def load_memes(self):
         """
@@ -61,21 +62,22 @@ class ImageManager:
         """
         try:
             async with self.lock:
-                subprocess.run(["wget", url, "-O",self.temp_path], check=True)
-                img = Image.open(self.temp_path)
+                subprocess.run(["wget", url, "-O",self.temp_raw_path], check=True)
+                img = Image.open(self.temp_raw_path)
                 img.convert("RGB")
-                img.save(self.temp_path, "PNG")
-                f = open(self.temp_path,'rb')
+                img.save(self.temp_png_path, "PNG")
+                f = open(self.temp_raw_path,'rb')
                 hash_md5 = hashlib.md5()
                 for chunk in iter(lambda: f.read(4096), b""):
                     hash_md5.update(chunk)
                 hash = hash_md5.hexdigest()
                 data = self.db.find_one(self.table_name,{"hash":hash})
-                img_base64 = await self.encode_image(self.temp_path) 
+                img_base64 = await self.encode_image(self.temp_png_path) 
                 description = self.llm_api.create_image_description(img_base64)
                 if data is None and is_meme and self.decide_if_add():
                     embedding = self.llm_api.send_request_embedding(description)
                     new_time = int(datetime.now(global_config.time_zone).timestamp())
+                    img_base64 = await self.encode_image(self.temp_raw_path)
                     new_record = {
                         "_id":self.data_length,
                         "hash":hash,
