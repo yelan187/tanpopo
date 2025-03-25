@@ -14,6 +14,7 @@ from .willing_manager import WillingManager
 from .logger import register_logger
 from .image_manager import ImageManager
 from .action_controller import ActionController
+from .emotion_manager import EmotionManager
 from ..ws import WS
 
 logger = register_logger("bot", global_config.log_level)
@@ -30,7 +31,9 @@ class Bot:
         self.image_manager = ImageManager()
         self.memory = Memory(self)
         self.action_controller = ActionController(self)
+        # self.emotion_manager = EmotionManager(self)
 
+        # asyncio.create_task(self.emotion_manager.start())
         asyncio.create_task(self.message_manager.start_task())
         asyncio.create_task(self.image_manager.load_memes())
         asyncio.create_task(self.willing_manager.start_regression_task())
@@ -62,6 +65,7 @@ class Bot:
             willing = await self.willing_manager.change_willing_after_receive(
                 messageEvent
             )  # 收到消息时更新回复意愿
+            # await self.emotion_manager.update_emotion(messageEvent,chat_history)
             if (messageEvent.group_id in global_config.group_talk_allowed and random.random() < willing):
                 await self.willing_manager.change_willing_if_thinking(
                     messageEvent.group_id
@@ -88,8 +92,8 @@ class Bot:
                     except Exception as e:
                         cnt -= 1
                         logger.error(f"请求失败,重新请求->{e}")
-                        
-                    
+                if not success:
+                    return 
                 logger.warning(f"原始响应->{json_resp}")
                 resp = json_resp.get("reply",None)
                 if resp == None:
