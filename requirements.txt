@@ -1,9 +1,12 @@
 colorama==0.4.6
 faiss_cpu==1.10.0
 jieba==0.42.1
+matplotlib==3.10.1
+networkx==3.4.2
 numpy==2.2.4
 openai==1.68.2
 Pillow==11.1.0
 pymongo==4.11.3
+PyYAML==6.0.2
 Requests==2.32.3
 websockets==15.0.1
