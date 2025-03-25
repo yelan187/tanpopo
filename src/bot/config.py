@@ -84,7 +84,7 @@ class Config:
     log_level: str = "INFO"
 
     @staticmethod
-    def from_yaml(yaml_file: str):
+    def from_yaml():
         """从YAML文件读取配置并加载到Config类实例中"""
         script_dir = os.path.dirname(os.path.abspath(__file__))  # 获取当前脚本所在的绝对路径
         project_root = os.path.abspath(os.path.join(script_dir, "../.."))
@@ -133,7 +133,7 @@ class Config:
         return config
 
 
-global_config = Config.from_yaml("config.yaml")
+global_config = Config.from_yaml()
 
 # 如果环境是 DOCKER，可以更新配置
 if os.getenv("ENV") == "DOCKER":
