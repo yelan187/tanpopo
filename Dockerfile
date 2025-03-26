@@ -9,5 +9,6 @@ RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 # 项目初始环境配置
 COPY . .
 RUN mkdir tmp
+RUN chmod +x start.sh
 
-CMD cp ./onebot11.json /napcat/onebot11.json && python script/init_memory_db.py && python run.py
+CMD ./start.sh && python script/init_memory_db.py && python run.py
