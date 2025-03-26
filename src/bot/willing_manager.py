@@ -64,7 +64,12 @@ class WillingManager:
         elif global_config.bot_config["nickname"] in message.get_plaintext():
             increase = 0.2
         else:
+            for name in global_config.bot_config["alias"]:
+                if name in message.get_plaintext():
+                    increase = 0.2
+                    break
             increase = 0
+    
         idd = message.group_id if message.is_group() else message.user_id
         async with self.lock:  # 确保线程安全
             if self.current_willing.get(idd,None) is None:

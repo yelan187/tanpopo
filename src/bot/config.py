@@ -40,10 +40,11 @@ class Config:
             "max_retrys":3,
         }
     )
-    bot_config: Dict[str, str] = field(
+    bot_config: Dict[str] = field(
         default_factory=lambda: {
             "personality": "你是一个大一学生，正在学习计算机科学，你性格不错，为人友善但有点腹黑",
             "nickname": "N0thing",
+            "alias": [],
         }
     )
     group_talk_allowed: List[int] = field(default_factory=list)
@@ -79,6 +80,7 @@ class Config:
     bot_actions_enabled: List[str] = field(
         default_factory=lambda: ["艾特发送者", "发送表情包"]
     )
+    
     message_revoke_interval: int = 300
     time_zone: timezone = timezone(timedelta(hours=+8))  # UTC+8
     log_level: str = "INFO"
