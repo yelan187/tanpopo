@@ -13,7 +13,9 @@ class Config:
     """
     bot全局配置
     """
-
+    http_settings: Dict[str, str] = field(
+        default_factory=lambda: {"host": "127.0.0.1", "port": 3000}
+    )
     ws_settings: Dict[str, str] = field(
         default_factory=lambda: {"host": "127.0.0.1", "port": 3001}
     )
@@ -140,5 +142,6 @@ global_config = Config.from_yaml()
 # 如果环境是 DOCKER，可以更新配置
 if os.getenv("ENV") == "DOCKER":
     global_config.ws_settings["host"] = "napcat"
+    global_config.http_settings["host"] = "napcat"
     global_config.database_config["uri"] = "mongodb://mongodb:27017/"
     print("Using docker config")

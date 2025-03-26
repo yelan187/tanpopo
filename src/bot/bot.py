@@ -126,7 +126,7 @@ class Bot:
         """
         for seg in message.message.segments:
             if seg.type == "reply":
-                url = "http://localhost:3000/"
+                url = f"http://{global_config.http_settings['host']}:3000/"
                 data = {"message_id": f"{seg.data['id']}"}
                 resp = requests.post(url + "get_msg", data=data)
                 msg = MessageEvent(resp.json()["data"])
