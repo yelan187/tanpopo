@@ -40,7 +40,7 @@ class Config:
             "max_retrys":3,
         }
     )
-    bot_config: Dict[str] = field(
+    bot_config: Dict[str, str] = field(
         default_factory=lambda: {
             "personality": "你是一个大一学生，正在学习计算机科学，你性格不错，为人友善但有点腹黑",
             "nickname": "N0thing",
