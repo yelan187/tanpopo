@@ -30,7 +30,13 @@ class MessageEvent:
             return
         self.message.update_reply(reply)
 
-    def get_plaintext(self,with_at:bool=True):
+    def get_plaintext(self,with_at:bool=True,loop=False):
+        """
+        获取消息处理后纯文本
+
+        :param with_at: 是否包含@信息
+        :param loop: 是否循环获取（避免无穷递归）
+        """
         prefix = ""
         if self.at_list!=[]:
             for i in self.at_list:
@@ -46,7 +52,7 @@ class MessageEvent:
                 plaintext += "[图片]"
                 d = segment.data.get('discription')
                 plaintext += d if d is not None else ""
-            elif segment.type == "reply":
+            elif segment.type == "reply" and not loop:
                 plaintext += "[引用]"
                 d = segment.data.get("plaintext")
                 plaintext += d if d is not None else ""
@@ -117,4 +123,4 @@ class Message:
     def update_reply(self,reply:MessageEvent):
         for Segment in self.segments:
             if Segment.type == "reply":
-                Segment.data['plaintext'] = reply.get_text()
+                Segment.data['plaintext'] = reply.get_plaintext(loop=True)

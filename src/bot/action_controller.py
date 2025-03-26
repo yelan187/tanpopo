@@ -13,6 +13,9 @@ class ActionController:
     def __init__(self, bot):
         from .bot import Bot
         self.bot:Bot = bot
+        """
+        mapping格式:"prompt关键词",["action名称",权重]
+        """
         self.mapping = {
             "回复":["reply",5],
             "艾特发送者":["at",0],
@@ -20,6 +23,12 @@ class ActionController:
         }
 
     async def handle(self, actions,**args):
+        """
+        处理动作
+
+        :param actions: 动作列表
+        :param args: 动作需要的其他参数
+        """
         action_sorted = sorted(actions,key=lambda x:self.mapping.get(x,[0,0])[1])
         for action in action_sorted:
             if action not in self.mapping:
@@ -27,6 +36,13 @@ class ActionController:
             await getattr(self,"_"+self.mapping[action][0],None)(**args)
 
     async def send_text(self,part:str,message:MessageEvent,is_first:bool):
+        """
+        发送文本
+
+        :param part: 文本内容
+        :param message: 消息事件
+        :param is_first: 是否是第一条消息,第一条消息与回复和@关联
+        """
         msg = []
         if is_first and (random.random() < 0.5 or datetime.now(global_config.time_zone).timestamp() - datetime.strptime(message.time, "%Y-%m-%d %H:%M:%S").timestamp() > 20 ):
             reply_id = message.message_id
@@ -50,7 +66,13 @@ class ActionController:
         await self.bot.ws.send(json.dumps(tmp))
         await self.push_bot_msg(msg,message)
 
-    async def push_bot_msg(self,msg:list, messageEvent: MessageEvent) -> None:
+    async def push_bot_msg(self,msg:list, messageEvent: MessageEvent):
+        """
+        推送消息到历史消息队列
+
+        :param msg: 消息内容
+        :param messageEvent: 正在处理的消息事件
+        """
         sent_msg = {
             "self_id": messageEvent.self_id,
             "user_id": messageEvent.self_id,
@@ -67,6 +89,12 @@ class ActionController:
         )
 
     async def send_image(self,base64_img:str,message:MessageEvent):
+        """
+        发送图片
+
+        :param base64_img: 图片base64编码
+        :param message: 正在处理的消息事件
+        """
         tmp = {
             "action": "send_msg",
             "params": {
