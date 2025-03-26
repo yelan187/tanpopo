@@ -87,7 +87,7 @@ class Database:
         try:
             collection = self.db[collection_name]
             result = collection.find_one(query)
-            self.logger.debug(f"查询到一条数据: {result}")
+            self.logger.debug("查询到一条数据")
             return result
         except PyMongoError as e:
             self.logger.error(f"查询单条数据失败: {e}")
@@ -111,7 +111,7 @@ class Database:
                 return_document=ReturnDocument.AFTER,
                 upsert=upsert
             )
-            self.logger.debug(f"更新数据成功: {result}")
+            self.logger.debug("更新数据成功")
             return result
         except PyMongoError as e:
             self.logger.error(f"更新数据失败: {e}")

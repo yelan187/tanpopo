@@ -1,5 +1,6 @@
 import json
 import random
+import requests
 import asyncio
 
 from ..event import MessageEvent
@@ -49,19 +50,15 @@ class Bot:
             message (MessageEvent): 消息事件
         """
         logger.info(
-            f"收到来自{'群聊'+str(messageEvent.group_id) if messageEvent.is_group() else '私聊'}的消息->{messageEvent.raw_message}"
-        )
-        await self.message_manager.push_message(
-            messageEvent.get_id(), messageEvent.is_private(), messageEvent
+            f"收到来自{'群聊'+str(messageEvent.group_id) if messageEvent.is_group() else '私聊'}的消息->({messageEvent.message_id}){messageEvent.raw_message}"
         )
         if messageEvent.is_group():
             self.nickname_manager.update_after_recv(messageEvent)
             desriptions = await self.image_manager.create_img_description_update(*messageEvent.get_imgs_url())
-            if desriptions != []:
-                messageEvent.update_discriptions(desriptions)
-            chat_history = await self.message_manager.update_chat_history(
-                messageEvent.get_id(), messageEvent.is_private(),messageEvent
-            )
+            messageEvent.update_discriptions(desriptions)
+            messageEvent.update_reply(await self.get_reply(messageEvent))
+            await self.message_manager.push_message(messageEvent.get_id(), messageEvent.is_private(), messageEvent)
+            chat_history = await self.message_manager.get_all_messages(messageEvent.get_id(),messageEvent.is_private())
             willing = await self.willing_manager.change_willing_after_receive(
                 messageEvent
             )  # 收到消息时更新回复意愿
@@ -126,3 +123,14 @@ class Bot:
         }
         sent_message = MessageEvent(sent_msg)
         await self.message_manager.push_message(messageEvent.group_id,False,sent_message)
+
+    async def get_reply(self,message:MessageEvent)->MessageEvent:
+        for seg in message.message.segments:
+            if seg.type == "reply":
+                url = "http://localhost:3000/"
+                data = {"message_id": f"{seg.data['id']}"}
+                resp = requests.post(url+"get_msg", data=data)
+                msg = MessageEvent(resp.json()["data"])
+                msg.update_discriptions(await self.image_manager.create_img_description_update(*msg.get_imgs_url()))
+                return msg
+        return None
