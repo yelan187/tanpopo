@@ -11,3 +11,7 @@
 ### 部署方式
 
 - [在 🐳 Docker 上部署 tanpopo](docs/docker_implement.md)
+
+### 📦配置
+
+如果手动配置，请将[配置文件模板](template/config_template.yaml)复制到 `config.yaml`，然后根据需要修改。
