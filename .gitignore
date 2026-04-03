@@ -5,6 +5,12 @@ __pycache__/
 .VSCodeCounter/
 script/*.png
 config.yaml
+init_memory_config.yaml
 .DS_Store
 
 test*
+# local venv
+bin/
+lib/
+share/
+pyvenv.cfg
