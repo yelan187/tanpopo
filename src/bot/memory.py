@@ -66,12 +66,14 @@ class Memory():
         async with self.lock:
             self.memory = self.db.find(self.table_name)
             self.memory.sort(key=lambda x: x['_id'])
-        embeddings = []
-        for m in self.memory:
-            embedding = np.array(m['embedding'])
-            embeddings.append(embedding)
-        embeddings = np.array(embeddings)
-        self.index.add(embeddings)
+            embeddings = []
+            for m in self.memory:
+                embedding = np.array(m['embedding'])
+                embeddings.append(embedding)
+            self.index = faiss.IndexFlatL2(self.dim)
+            if embeddings:
+                embeddings = np.array(embeddings)
+                self.index.add(embeddings)
         logger.info("记忆库加载完成")
 
 
@@ -110,7 +112,7 @@ class Memory():
         启动记忆库遗忘任务
         '''
         if not self.forgetting_started:
-            self.starforgetting_startedted = True
+            self.forgetting_started = True
             self.task = asyncio.create_task(self.forget_memory())
 
     async def build_memory(self):
@@ -138,10 +140,11 @@ class Memory():
                     continue
                 new_summary = analysis_result['summary']
 
-                reranked_result, new_embedding = self.get_reranked_result(new_summary)
-                
-                logger.debug(reranked_result[0]['relevance_score'])
-                if reranked_result[0]['relevance_score'] > self.compression_threshold:
+                reranked_result, new_embedding = await self.get_reranked_result(new_summary)
+                if not reranked_result:
+                    logger.debug("记忆重排结果为空，跳过压缩判断")
+                elif reranked_result[0]['relevance_score'] > self.compression_threshold:
+                    logger.debug(reranked_result[0]['relevance_score'])
                     logger.debug(f"记忆被压缩")
                     continue
                 
@@ -171,8 +174,9 @@ class Memory():
                         self.db.update_one(self.table_name, {"hash": hash}, {"$push": {"associates": new_memory_item["hash"]}})
                         logger.debug(f"添加关联记忆: {self.db.find_one(self.table_name, {'hash': hash})['summary']}")
 
-                self.memory.append(new_memory_item)
-                self.index.add(np.array(new_embedding, dtype=np.float32).reshape(1, -1))
+                async with self.lock:
+                    self.memory.append(new_memory_item)
+                    self.index.add(np.array(new_embedding, dtype=np.float32).reshape(1, -1))
                 self.db.insert(self.table_name, new_memory_item)
 
     async def start_building_task(self):
@@ -183,7 +187,7 @@ class Memory():
             self.biulding_started = True
             self.task = asyncio.create_task(self.build_memory())
 
-    def get_reranked_result(self,summary:str,faiss_k=None,reranking_k=None) -> list:
+    async def get_reranked_result(self,summary:str,faiss_k=None,reranking_k=None) -> list:
         
         '''
         reranked_result = [
@@ -199,19 +203,33 @@ class Memory():
         faiss_k = self.query_faiss_k if faiss_k is None else faiss_k
         reranking_k = self.reranking_k if reranking_k is None else reranking_k
         query_embedding:np.array = self.llm_api.send_request_embedding(summary)
-        query_embedding = query_embedding / np.linalg.norm(query_embedding)
+        query_norm = np.linalg.norm(query_embedding)
+        if query_norm == 0:
+            logger.warning("查询向量范数为0，跳过记忆检索")
+            return [], query_embedding
+        query_embedding = query_embedding / query_norm
         logger.info(f"查询与[{summary}]相关的{faiss_k}条记忆")
-        _, indices = self.index.search(query_embedding.reshape(1,-1),faiss_k)
+        async with self.lock:
+            if not self.memory or self.index.ntotal == 0:
+                return [], query_embedding
+            search_k = min(faiss_k, self.index.ntotal)
+            _, indices = self.index.search(query_embedding.reshape(1,-1),search_k)
+            valid_indexes = [int(i) for i in indices[0] if 0 <= int(i) < len(self.memory)]
+            if not valid_indexes:
+                return [], query_embedding
+            candidate_memories = [self.memory[i] for i in valid_indexes]
+            candidate_docs = [item['summary'] for item in candidate_memories]
 
-        doc_indexes = indices[0]
-        reranked_result:list[dict] = self.llm_api.send_request_rerank(summary,[self.memory[i]['summary'] for i in doc_indexes], reranking_k)
+        reranked_result:list[dict] = self.llm_api.send_request_rerank(summary, candidate_docs, reranking_k)
         res = []
-        for i in range(len(reranked_result)):
-            res.append({
-                "memory": self.memory[int(doc_indexes[i])],
-                "relevance_score": reranked_result[i]['relevance_score'],
-            })
-            
+        for item in reranked_result:
+            rerank_index = item.get("index")
+            if isinstance(rerank_index, int) and 0 <= rerank_index < len(candidate_memories):
+                res.append({
+                    "memory": candidate_memories[rerank_index],
+                    "relevance_score": item.get("relevance_score", 0.0),
+                })
+
         return res,query_embedding
 
     async def update_memory_strength(self,_id:list[int],delta:float):
@@ -235,7 +253,7 @@ class Memory():
         if current_message.is_tome:
             plaintext = f"{global_config.bot_config['nickname']}," + plaintext
 
-        reranked_result,_ = self.get_reranked_result(plaintext)
+        reranked_result,_ = await self.get_reranked_result(plaintext)
         for i in range(len(reranked_result)):
             if i == 0:
                 relevant_memory.append(reranked_result[i]['memory'])
