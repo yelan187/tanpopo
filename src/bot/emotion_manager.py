@@ -1,11 +1,12 @@
 import asyncio
+import json
 import random
 
 from .logger import register_logger
 from ..event import MessageEvent
 from .config import global_config
 
-logger = register_logger("emotion manager")
+logger = register_logger("emotion manager", global_config.log_level)
 
 class EmotionManager:
     """
@@ -26,28 +27,62 @@ class EmotionManager:
         }
         self.default_vad = (0.5, 0.5, 0.5)
         self.current_value = (0.5, 0.5, 0.5)
-        self.decay_factor = 0.4    # 新情感影响权重
-        self.decay_factor = 0.4    # 新情感影响权重
-        self.inertia = 0.35         # 情感惯性系数（衰减任务）
+        self.update_gain = 0.65     # 新情感对当前状态的影响权重（调高以增强波动）
+        self.inertia = 0.55         # 衰减任务中的惯性，越大衰减越慢
+        self.regress_interval = 30  # 情感回归到中性值的周期（秒）
+        self.max_step = 0.40        # 单次更新最大变化幅度，避免突变
         self.started = False
         self.task = None
         self.lock = asyncio.Lock()
         self.bot:Bot = bot
 
+    @staticmethod
+    def _clip01(value: float) -> float:
+        return max(0.0, min(1.0, value))
+
+    def _normalize_emotion_weights(self, raw_emotion) -> dict[str, float]:
+        """
+        把 LLM 返回的 emotion 归一化为 {emotion: weight}。
+        兼容 dict / JSON 字符串；过滤未知情绪与非法数值。
+        """
+        if isinstance(raw_emotion, str):
+            try:
+                raw_emotion = json.loads(raw_emotion)
+            except Exception:
+                logger.warning(f"emotion 字段不是合法 JSON: {raw_emotion}")
+                return {}
+        if not isinstance(raw_emotion, dict):
+            return {}
+
+        cleaned: dict[str, float] = {}
+        for emotion, weight in raw_emotion.items():
+            if emotion not in self.vad_lexicon:
+                continue
+            try:
+                number = float(weight)
+            except (TypeError, ValueError):
+                continue
+            cleaned[emotion] = max(0.0, number)
+
+        total = sum(cleaned.values())
+        if total <= 0:
+            return {}
+
+        return {k: v / total for k, v in cleaned.items()}
+
     async def regressing_emotion(self):
         """独立运行的异步任务，定期衰减VAD值"""
         while True:
-            await asyncio.sleep(30)  # 每30秒更新一次
-            await asyncio.sleep(30)  # 每30秒更新一次
+            await asyncio.sleep(self.regress_interval)
             async with self.lock:
                 # 线性衰减至中性值
                 v = self.current_value[0] * self.inertia + 0.5 * (1 - self.inertia)
                 a = self.current_value[1] * self.inertia + 0.5 * (1 - self.inertia)
                 d = self.current_value[2] * self.inertia + 0.5 * (1 - self.inertia)
                 self.current_value = (
-                    max(0.0, min(1.0, v)),
-                    max(0.0, min(1.0, a)),
-                    max(0.0, min(1.0, d))
+                    self._clip01(v),
+                    self._clip01(a),
+                    self._clip01(d)
                 )
                 logger.debug(
                     f"情感衰减后 VAD -> V:{self.current_value[0]:.2f}, "
@@ -88,22 +123,25 @@ class EmotionManager:
         async with self.lock:
             past_value = self.current_value
             logger.debug(f"更新前情感状态 VAD -> V:{past_value[0]:.2f}, A:{past_value[1]:.2f}, D:{past_value[2]:.2f}")
+
         success = False
+        emotion_weights = {}
         cnt = global_config.llm_models['max_retrys']
         while not success and cnt > 0:
-            # print(self.bot.llm_api.semantic_analysis(message, chat_history))
-            # print(self.bot.llm_api.semantic_analysis(message, chat_history))
             try:
-                emotion_weights = self.bot.llm_api.semantic_analysis(message, chat_history)["emotion"]
+                analysis = self.bot.llm_api.semantic_analysis(message, chat_history)
+                emotion_weights = self._normalize_emotion_weights(analysis.get("emotion"))
                 success = True
             except Exception as e:
                 logger.error(f"语义分析出错->{e}")
                 cnt -= 1
-        if not success or not isinstance(emotion_weights,dict):
+
+        if not success or not emotion_weights:
+            logger.debug("未拿到有效情绪权重，跳过本次情感更新")
             return
+
         logger.debug(f"收到情感权重更新: {emotion_weights}")
-        
-        
+
         # 计算情感影响
         v_sum, a_sum, d_sum = 0.0, 0.0, 0.0
         for emotion, weight in emotion_weights.items():
@@ -112,13 +150,25 @@ class EmotionManager:
             a_sum += vad[1] * weight
             d_sum += vad[2] * weight
 
-        # 应用衰减因子并限制数值范围
-        new_v = max(0.0, min(1.0, 
-            v_sum * self.decay_factor + past_value[0] * (1 - self.decay_factor)))
-        new_a = max(0.0, min(1.0, 
-            a_sum * self.decay_factor + past_value[1] * (1 - self.decay_factor)))
-        new_d = max(0.0, min(1.0, 
-            d_sum * self.decay_factor + past_value[2] * (1 - self.decay_factor)))
+        # 峰值越高，说明情绪更集中，提升本次更新增益
+        peak_weight = max(emotion_weights.values()) if emotion_weights else 0.0
+        adaptive_gain = min(0.9, self.update_gain + peak_weight * 0.2)
+
+        target_v = v_sum * adaptive_gain + past_value[0] * (1 - adaptive_gain)
+        target_a = a_sum * adaptive_gain + past_value[1] * (1 - adaptive_gain)
+        target_d = d_sum * adaptive_gain + past_value[2] * (1 - adaptive_gain)
+
+        def limit_step(target: float, current: float) -> float:
+            delta = target - current
+            if delta > self.max_step:
+                delta = self.max_step
+            elif delta < -self.max_step:
+                delta = -self.max_step
+            return self._clip01(current + delta)
+
+        new_v = limit_step(target_v, past_value[0])
+        new_a = limit_step(target_a, past_value[1])
+        new_d = limit_step(target_d, past_value[2])
 
         async with self.lock:
             self.current_value = (new_v, new_a, new_d)

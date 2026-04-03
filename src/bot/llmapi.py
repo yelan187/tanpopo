@@ -88,7 +88,7 @@ class LLMAPI:
 
         prompt += f"""并打包为一个 json 发给我,json 格式如下:"""
 
-        prompt += f"""{{"keywords": ["关键词1","关键词2"],"emotion": "情感","summary": "摘要"}}"""
+        prompt += f"""{{"keywords": ["关键词1","关键词2"],"emotion": {{"快乐": 0.3, "悲伤": 0.0, "愤怒": 0.1, "惊喜": 0.1, "平静": 0.3, "恐惧": 0.0, "爱": 0.2, "讨厌": 0.0}},"summary": "摘要"}}"""
 
         prompt += f"""注意，除了json字符串请不要输出多余内容</Requirement>"""
 

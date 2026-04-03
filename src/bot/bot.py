@@ -81,11 +81,6 @@ class Bot:
                 relavant_memories = await self.memory.recall(messageEvent)
 
                 vad = await self.emotion_manager.get_current_vad()
-
-                vad_prompt = self.emotion_manager.handle_emotion(vad)
-
-                vad = await self.emotion_manager.get_current_vad()
-
                 vad_prompt = self.emotion_manager.handle_emotion(vad)
 
                 user_prompt = self.prompt_builder.build_user_prompt(
