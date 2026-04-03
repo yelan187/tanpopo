@@ -1,7 +1,6 @@
 import json
 
 import websockets
-import json
 from ..event import MessageEvent
 from ..bot.logger import register_logger
 from ..bot.config import global_config
@@ -15,21 +14,35 @@ class WS:
         self.role = role
         self.url = f"ws://{self.host}:{self.port}/"
         self.ws = None
+        self.server = None
+        self.message_handler = None
 
     async def connect(self):
         if self.role == 'client':
             self.ws = await websockets.connect(self.url,ping_interval=6000, ping_timeout=3000)
             # print(f"Client connected to {self.url}")
         elif self.role == 'server':
-            self.ws = await websockets.serve(self.on_message, '0.0.0.0', self.port)
+            self.server = await websockets.serve(
+                self.on_message,
+                '0.0.0.0',
+                self.port,
+                ping_interval=6000,
+                ping_timeout=3000,
+            )
             # print(f"Server started at {self.url}")
 
     async def on_message(self, websocket):
-        async for message in websocket:
-            message = json.loads(message)
-            if message.get('post_type') != 'message':
-                return None
-            return MessageEvent(message)
+        self.ws = websocket
+        try:
+            async for message in websocket:
+                message = json.loads(message)
+                if message.get('post_type') != 'message':
+                    continue
+                if self.message_handler:
+                    await self.message_handler(MessageEvent(message))
+        finally:
+            if self.ws is websocket:
+                self.ws = None
 
     async def send(self, message):
         if self.ws:
@@ -46,3 +59,6 @@ class WS:
     async def close(self):
         if self.ws:
             await self.ws.close()
+        if self.server:
+            self.server.close()
+            await self.server.wait_closed()

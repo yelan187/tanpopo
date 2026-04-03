@@ -9,14 +9,21 @@ logger = register_logger('main',global_config.log_level)
 
 async def main(ws:WS):
     bot = Bot(ws=ws)
+    bot.ws.message_handler = bot.handle_message
     await bot.ws.connect()
     if bot.ws.role == 'client':
         while True:
             res = await bot.ws.recv()
             if res:
                 await bot.handle_message(res)
+    else:
+        await asyncio.Future()
 
 if __name__ == '__main__':
-    ws = WS(host=global_config.ws_settings['host'], port=global_config.ws_settings['port'], role='client')
+    ws = WS(
+        host=global_config.ws_settings['host'],
+        port=global_config.ws_settings['port'],
+        role=global_config.ws_settings.get('role', 'client'),
+    )
     logger.info('监听进程启动')
     asyncio.run(main(ws))
