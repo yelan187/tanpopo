@@ -12,7 +12,7 @@ git clone https://github.com/yelan187/tanpopo.git
 
 ### 2. 配置tanpopo
 
-将tamplate/config.yaml复制到项目根目录并命名为config.yaml，修改其中的配置项，具体配置项含义请参考配置说明
+将template/config.yaml复制到项目根目录并命名为config.yaml，修改其中的配置项，具体配置项含义请参考配置说明
 
 ### 3. 构建镜像并启动容器
 
