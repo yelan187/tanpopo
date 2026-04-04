@@ -1,4 +1,5 @@
 import time
+from .qq_face_map import get_qq_face_name
 
 class MessageEvent:
     def __init__(self, messageEvent:dict):
@@ -56,6 +57,29 @@ class MessageEvent:
                 plaintext += "[引用]"
                 d = segment.data.get("plaintext")
                 plaintext += d if d is not None else ""
+            elif segment.type == "face":
+                face_id = segment.data.get("id")
+                if face_id is not None:
+                    face_name = get_qq_face_name(face_id)
+                    plaintext += f"[表情:{face_name}]"
+                else:
+                    plaintext += "[表情]"
+            elif segment.type in ("mface", "market_face"):
+                # 兼容 QQ 扩展表情
+                summary = (
+                    segment.data.get("summary")
+                    or segment.data.get("emoji_package_name")
+                    or segment.data.get("key")
+                )
+                if summary is None:
+                    face_id = (
+                        segment.data.get("emoji_id")
+                        or segment.data.get("face_id")
+                        or segment.data.get("id")
+                    )
+                    if face_id is not None:
+                        summary = get_qq_face_name(face_id)
+                plaintext += f"[表情:{summary}]" if summary else "[表情]"
             plaintext += " "
 
         return plaintext
