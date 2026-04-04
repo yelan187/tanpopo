@@ -124,19 +124,22 @@ class EmotionManager:
             past_value = self.current_value
             logger.debug(f"更新前情感状态 VAD -> V:{past_value[0]:.2f}, A:{past_value[1]:.2f}, D:{past_value[2]:.2f}")
 
-        success = False
         emotion_weights = {}
-        cnt = global_config.llm_models['max_retrys']
-        while not success and cnt > 0:
+        retry_times = min(2, max(1, int(global_config.llm_models.get('max_retrys', 1))))
+        while retry_times > 0:
             try:
-                analysis = self.bot.llm_api.semantic_analysis(message, chat_history)
+                # LLM 请求是同步 IO，放到线程中避免阻塞事件循环。
+                analysis = await asyncio.to_thread(
+                    self.bot.llm_api.semantic_analysis, message, chat_history
+                )
                 emotion_weights = self._normalize_emotion_weights(analysis.get("emotion"))
-                success = True
+                if emotion_weights:
+                    break
             except Exception as e:
-                logger.error(f"语义分析出错->{e}")
-                cnt -= 1
+                logger.warning(f"语义分析出错，情绪更新跳过本轮: {e}")
+            retry_times -= 1
 
-        if not success or not emotion_weights:
+        if not emotion_weights:
             logger.debug("未拿到有效情绪权重，跳过本次情感更新")
             return
 

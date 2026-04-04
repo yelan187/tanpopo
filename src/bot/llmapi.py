@@ -1,4 +1,5 @@
 import json
+import re
 
 import numpy as np
 import requests
@@ -98,8 +99,23 @@ class LLMAPI:
                 {"role": "user", "content": prompt},
             ]
         )
-        resp = response.choices[0].message.content
-        return json.loads(resp)
+        resp = response.choices[0].message.content or ""
+        try:
+            return json.loads(resp)
+        except json.JSONDecodeError:
+            # 兼容模型返回 ```json ... ``` 或带前后说明文本的情况
+            fenced = re.sub(r"^```(?:json)?\s*|\s*```$", "", resp.strip(), flags=re.IGNORECASE)
+            try:
+                return json.loads(fenced)
+            except json.JSONDecodeError:
+                match = re.search(r"\{.*\}", resp, flags=re.DOTALL)
+                if match:
+                    try:
+                        return json.loads(match.group(0))
+                    except json.JSONDecodeError:
+                        pass
+                logger.warning(f"semantic_analysis 返回非 JSON，已使用兜底。原始返回: {resp[:200]}")
+                return {"keywords": [], "emotion": {"平静": 1.0}, "summary": ""}
 
     def send_request_embedding(self, text: str):
         response = self.client.embeddings.create(
