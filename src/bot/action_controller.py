@@ -33,7 +33,12 @@ class ActionController:
         for action in action_sorted:
             if action not in self.mapping:
                 logger.warning(f"未知动作{action}")
-            await getattr(self,"_"+self.mapping[action][0],None)(**args)
+                continue
+            handler = getattr(self, "_" + self.mapping[action][0], None)
+            if handler is None:
+                logger.warning(f"动作{action}未实现处理函数")
+                continue
+            await handler(**args)
 
     async def send_text(self,part:str,message:MessageEvent,is_first:bool):
         """

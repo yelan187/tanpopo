@@ -1,7 +1,6 @@
 import random
 import base64
 import asyncio
-import subprocess
 import hashlib
 import os
 from datetime import datetime
@@ -9,6 +8,7 @@ from datetime import datetime
 from PIL import Image
 import faiss
 import numpy as np
+import requests
 
 from .database import Database
 from .llmapi import LLMAPI
@@ -31,6 +31,19 @@ class ImageManager:
             os.makedirs(os.path.join(project_root, "tmp"))
         self.temp_raw_path = os.path.join(project_root, "tmp","temp_image")
         self.temp_png_path = os.path.join(project_root, "tmp","temp_image.png")
+
+    def _download_and_prepare_image(self, url: str) -> str:
+        response = requests.get(url, timeout=20)
+        response.raise_for_status()
+        content = response.content
+        with open(self.temp_raw_path, "wb") as f:
+            f.write(content)
+
+        with Image.open(self.temp_raw_path) as img:
+            img_rgb = img.convert("RGB")
+            img_rgb.save(self.temp_png_path, "PNG")
+
+        return hashlib.md5(content).hexdigest()
 
     async def load_memes(self):
         """
@@ -62,15 +75,7 @@ class ImageManager:
         """
         try:
             async with self.lock:
-                subprocess.run(["wget", url, "-O",self.temp_raw_path], check=True)
-                img = Image.open(self.temp_raw_path)
-                img.convert("RGB")
-                img.save(self.temp_png_path, "PNG")
-                f = open(self.temp_raw_path,'rb')
-                hash_md5 = hashlib.md5()
-                for chunk in iter(lambda: f.read(4096), b""):
-                    hash_md5.update(chunk)
-                hash = hash_md5.hexdigest()
+                hash = await asyncio.to_thread(self._download_and_prepare_image, url)
                 data = self.db.find_one(self.table_name,{"hash":hash})
                 img_base64 = await self.encode_image(self.temp_png_path) 
                 description = self.llm_api.create_image_description(img_base64)

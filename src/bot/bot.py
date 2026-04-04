@@ -116,24 +116,3 @@ class Bot:
             else:
                 logger.info(f"bot选择不回复")
                 return
-    
-    async def push_bot_msg(self, messageEvent:MessageEvent, part:str) -> None:
-        sent_msg = {
-            "self_id":messageEvent.self_id,
-            "user_id":messageEvent.self_id,
-            "group_id":messageEvent.group_id,
-            "sender":{
-                "user_id":messageEvent.self_id,
-                "nickname":global_config.bot_config["nickname"],
-            },
-            "message":[
-                {
-                    "type":"text",
-                    "data":{
-                        "text":part
-                    }
-                }
-            ]
-        }
-        sent_message = MessageEvent(sent_msg)
-        await self.message_manager.push_message(messageEvent.group_id,False,sent_message)

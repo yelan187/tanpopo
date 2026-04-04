@@ -32,6 +32,8 @@ class ColoredFormatter(logging.Formatter):
 def register_logger(name:str,level="DEBUG"):
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    if logger.handlers:
+        return logger
     handler = logging.StreamHandler()
     handler.setLevel(level)
     formatter = ColoredFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s",datefmt="%Y-%m-%d %H:%M:%S")

@@ -102,9 +102,10 @@ class Memory():
                 for m in self.memory:
                     embedding = np.array(m['embedding'])
                     embeddings.append(embedding)
-                embeddings = np.array(embeddings)
                 self.index = faiss.IndexFlatL2(self.dim)
-                self.index.add(embeddings)
+                if embeddings:
+                    embeddings = np.array(embeddings)
+                    self.index.add(embeddings)
                 logger.info("记忆库遗忘完成")
                         
     async def start_forgetting_task(self):
@@ -131,7 +132,9 @@ class Memory():
                 cnt = global_config.llm_models['max_retrys']
                 while not success and cnt > 0:
                     try:
-                        analysis_result = self.llm_api.semantic_analysis(current_message, chat_history)
+                        analysis_result = await asyncio.to_thread(
+                            self.llm_api.semantic_analysis, current_message, chat_history
+                        )
                         success = True
                     except Exception as e:
                         logger.error(f"语义分析出错->{e}")

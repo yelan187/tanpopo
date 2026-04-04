@@ -94,7 +94,7 @@ class LLMAPI:
         prompt += f"""注意，除了json字符串请不要输出多余内容</Requirement>"""
 
         response = self.client.chat.completions.create(
-            model=self.chat_model,
+            model=self.semantic_analysis_model,
             messages=[
                 {"role": "user", "content": prompt},
             ]
