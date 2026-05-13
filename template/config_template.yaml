@@ -64,6 +64,16 @@ bot_actions_enabled:
   - "艾特发送者"
   - "发送表情包"
 
+agent_config:
+  runtime: "openhands"
+  openhands:
+    model: "" # 留空时使用 llm_models.chat_model
+    workspace: "."
+    qqio_mcp:
+      command: "" # 留空时默认使用当前 Python: -m src.agent.qqio_mcp
+      args: []
+      cwd: "."
+
 message_revoke_interval: 300
 
 log_level: "INFO"

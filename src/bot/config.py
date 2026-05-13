@@ -168,6 +168,20 @@ class Config:
     bot_actions_enabled: List[str] = field(
         default_factory=lambda: ["艾特发送者", "发送表情包"]
     )
+    agent_config: Dict[str, any] = field(
+        default_factory=lambda: {
+            "runtime": "openhands",
+            "openhands": {
+                "model": "",
+                "workspace": ".",
+                "qqio_mcp": {
+                    "command": "",
+                    "args": [],
+                    "cwd": ".",
+                },
+            },
+        }
+    )
     
     message_revoke_interval: int = 300
     time_zone: timezone = timezone(timedelta(hours=+8))  # UTC+8

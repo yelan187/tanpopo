@@ -1,21 +1,21 @@
 import asyncio
 
 from src.ws import WS
-from src.bot.bot import Bot
+from src.agent import AgentCore
 from src.bot.logger import register_logger
 from src.bot.config import global_config
 
 logger = register_logger('main',global_config.log_level)
 
 async def main(ws:WS):
-    bot = Bot(ws=ws)
-    bot.ws.message_handler = bot.handle_message
-    await bot.ws.connect()
-    if bot.ws.role == 'client':
+    agent = AgentCore(ws=ws)
+    agent.ws.message_handler = agent.handle_message
+    await agent.ws.connect()
+    if agent.ws.role == 'client':
         while True:
-            res = await bot.ws.recv()
+            res = await agent.ws.recv()
             if res:
-                await bot.handle_message(res)
+                await agent.handle_message(res)
     else:
         await asyncio.Future()
 
