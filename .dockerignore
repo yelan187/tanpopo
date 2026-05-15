@@ -3,3 +3,9 @@ tmp/
 .git
 __pycache__/
 .DS_Store
+config.yaml
+init_memory_config.yaml
+.opencode
+.agent_runtime/history.jsonl
+.agent_runtime/reload_request.json
+onebot-11/

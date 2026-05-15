@@ -12,18 +12,41 @@ git clone https://github.com/yelan187/tanpopo.git
 
 ### 2. 配置tanpopo
 
-将template/config.yaml复制到项目根目录并命名为config.yaml，修改其中的配置项，具体配置项含义请参考配置说明
+将 `template/config_template.yaml` 复制到项目根目录并命名为 `config.yaml`，至少修改以下字段：
+
+```yaml
+http_settings:
+  host: "napcat"      # bot 容器内访问 napcat http api
+  port: 3000
+
+ws_settings:
+  host: "0.0.0.0"     # 对 napcat 开放 ws 上报监听
+  port: 3001
+
+agent_config:
+  runtime: "openhands"
+  openhands:
+    model: "gpt-5.4"   # 按你的可用模型填写
+    mcp_servers:
+      qqio:
+        transport: "stdio"
+        command: ""
+        args: ["-m", "src.mcp.qqio"]
+        cwd: "."
+
+llm_auth:
+  api_key: "your_api_key"
+  base_url: "http://host.docker.internal:7700/v1"
+```
 
 ### 3. 构建镜像并启动容器
 
-下方命令会一键完成tanpopo的构建和启动，并启动napcat和mongodb服务
+下方命令会一键完成 tanpopo 构建和启动，并同时启动 napcat。
 
-**napcat默认使用ws正向代理，端口为3001**
-
-**mongodb默认使用27017端口。**
+**napcat 使用 ws 反向上报到 `tanpopo:3001`，http api 端口为 3000。**
 
 ```bash
-NAPCAT_UID=$(id -u) NAPCAT_GID=$(id -g) docker-compose up -d
+NAPCAT_UID=$(id -u) NAPCAT_GID=$(id -g) docker-compose up -d --build
 ```
 
 ### 4. 登录QQ

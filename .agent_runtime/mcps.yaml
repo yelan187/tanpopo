@@ -1,0 +1,63 @@
+servers:
+  qqio:
+    enabled: true
+    transport: stdio
+    command: ""
+    args:
+      - -m
+      - src.mcp.qqio
+    cwd: "."
+    env: {}
+    description: QQ/OneBot messaging and common query tools.
+  fetch:
+    enabled: true
+    transport: stdio
+    command: uvx
+    args:
+      - mcp-server-fetch
+      - --ignore-robots-txt
+    cwd: "."
+    env:
+      PYTHONIOENCODING: utf-8
+    description: Official fetch MCP server for retrieving webpages as markdown.
+  filesystem:
+    enabled: true
+    transport: stdio
+    command: npx
+    args:
+      - -y
+      - '@modelcontextprotocol/server-filesystem'
+      - /
+    cwd: "."
+    env: {}
+    description: Official filesystem MCP server with full container filesystem access.
+  workspace:
+    enabled: true
+    transport: stdio
+    command: ""
+    args:
+      - -m
+      - src.mcp.workspace
+    cwd: "."
+    env: {}
+    description: Local bash command tool.
+  capability:
+    enabled: true
+    transport: stdio
+    command: ""
+    args:
+      - -m
+      - src.mcp.capability
+    cwd: "."
+    env: {}
+    description: Inspect enabled MCPs, skills, and runtime state.
+  plugin_manager:
+    enabled: true
+    transport: stdio
+    command: ""
+    args:
+      - -m
+      - src.mcp.plugin_manager
+    cwd: "."
+    env: {}
+    description: Manage skill and MCP runtime registry entries.

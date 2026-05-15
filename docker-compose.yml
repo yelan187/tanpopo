@@ -15,23 +15,11 @@ services:
       - napcatCONFIG:/app/napcat/config # 持久化 NapCat 配置文件
     image: mlikiowa/napcat-docker:latest
 
-  mongodb:
-    container_name: mongodb
-    environment:
-      - TZ=Asia/Shanghai
-    expose:
-      - "27017"
-    restart: unless-stopped
-    volumes:
-      - mongodb:/data/db # 持久化 MongoDB 数据库
-      - mongodbCONFIG:/data/configdb # 持久化 MongoDB 配置文件
-    image: mongo:latest
-
   tanpopo:
     container_name: tanpopo
-    build: .
+    build:
+      context: .
     depends_on:
-      - mongodb
       - napcat
     environment:
       - ENV=DOCKER
@@ -40,9 +28,10 @@ services:
     volumes:
       - napcatCONFIG:/napcat
       - ./config.yaml:/tanpopo/config.yaml
+      - ./.agents:/tanpopo/.agents
+      - ./.agent_runtime:/tanpopo/.agent_runtime
+      - ./tmp:/tanpopo/tmp
 
 volumes:
   napcatQQ:
   napcatCONFIG:
-  mongodb:
-  mongodbCONFIG:

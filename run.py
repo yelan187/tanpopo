@@ -2,8 +2,7 @@ import asyncio
 
 from src.ws import WS
 from src.agent import AgentCore
-from src.bot.logger import register_logger
-from src.bot.config import global_config
+from src.runtime import global_config, register_logger
 
 logger = register_logger('main',global_config.log_level)
 
@@ -15,7 +14,7 @@ async def main(ws:WS):
         while True:
             res = await agent.ws.recv()
             if res:
-                await agent.handle_message(res)
+                agent.ws._dispatch_message(res)
     else:
         await asyncio.Future()
 

@@ -4,8 +4,8 @@ tmp/
 __pycache__/
 .VSCodeCounter/
 script/*.png
-config.yaml
-init_memory_config.yaml
+/config.yaml
+/init_memory_config.yaml
 .DS_Store
 
 test*
@@ -14,3 +14,8 @@ bin/
 lib/
 share/
 pyvenv.cfg
+
+.opencode
+.agent_runtime/history.jsonl
+.agent_runtime/reload_request.json
+onebot-11/

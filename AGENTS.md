@@ -1,27 +1,30 @@
 # AGENTS.md
 
-This guide is for coding agents working in the `tanpopo` repository.
+This guide is intended for coding agents working in the `tanpopo` repository.
 It documents the practical commands and coding conventions observed in the codebase.
 
 ## 1) Project Snapshot
 - Language: Python 3.10+
-- Runtime style: async bot service (WebSocket + MongoDB + LLM APIs)
+- Runtime style: async QQ bot service (WebSocket + OpenHands SDK + MCP tools)
 - Entry point: `run.py`
 - Main code: `src/`
-- Utility scripts: `script/`
 - Deployment path: Docker / docker-compose
+
+Current default architecture:
+- `run.py` routes OneBot message events to `src/agent/core.py` (`AgentCore`)
+- `AgentCore` uses one shared OpenHands `Agent` + per-session `Conversation`
+- QQ I/O and common actions are exposed via MCP server `src/mcp/qqio.py`
+- OpenHands default terminal/file tools are disabled on the runtime path; capabilities should be added through configured MCP servers
+- TTADK-specific routing has been removed; runtime now targets generic OpenAI-compatible endpoints
 
 ## 2) Repository Layout
 - `run.py`: top-level startup script
+- `src/agent/core.py`: OpenHands conversation loop, per-session lock/isolation, MCP wiring
+- `src/adapters/onebot.py`: OneBot event to generic agent message adapter
+- `src/runtime/`: shared runtime config, logging, gateway, and MCP server normalization
+- `src/mcp/qqio.py`: FastMCP server with OneBot APIs + memory tools
 - `src/ws/__init__.py`: WS client/server wrapper
 - `src/event/__init__.py`: message event and segment parsing
-- `src/bot/bot.py`: orchestration and message handling loop
-- `src/bot/config.py`: YAML config loading + global config object
-- `src/bot/database.py`: MongoDB access wrapper
-- `src/bot/llmapi.py`: model API calls (chat, embedding, rerank)
-- `src/bot/memory.py`: memory build/recall/forget logic
-- `script/init_memory_db.py`: seed initial memory records
-- `script/memory_db_query_test.py`: memory query debug script
 - `template/config_template.yaml`: config template
 
 ## 3) Environment Setup
@@ -32,10 +35,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp template/config_template.yaml config.yaml
 ```
-Also prepare:
-- `init_memory_config.yaml` (optional; auto-copied from template when absent)
-- reachable MongoDB instance (default `mongodb://localhost:27017/`)
-- valid LLM credentials in `config.yaml` (`llm_auth.api_key`, `llm_auth.base_url`)
+Also prepare valid LLM credentials in `config.yaml` (`llm_auth.api_key`, `llm_auth.base_url`).
 
 ### Docker setup
 ```bash
@@ -43,7 +43,7 @@ NAPCAT_UID=$(id -u) NAPCAT_GID=$(id -g) docker-compose up -d --build
 ```
 Notes:
 - Docker image installs from `requirements.txt`
-- Container startup runs: `./start.sh && python script/init_memory_db.py && python run.py`
+- Container startup runs: `./start.sh && python run.py`
 
 ## 4) Build, Lint, and Test Commands
 This repository does not define Makefile/tox/pytest config yet.
@@ -51,19 +51,19 @@ Use the commands below as the standard workflow.
 
 ### Build / run
 - Start app locally: `python run.py`
-- Seed memory DB once: `python script/init_memory_db.py`
 - Start full stack (Docker): `docker-compose up -d --build`
 - Rebuild image only: `docker build -t tanpopo .`
+- Rebuild+restart tanpopo only: `docker compose up -d --build tanpopo`
 
 ### Lint / static checks
-- Syntax check all Python files: `python -m compileall src script run.py`
+- Syntax check all Python files: `python -m compileall src run.py`
+- Fast check for agent path: `python -m compileall src/agent src/adapters src/runtime src/mcp`
 - Optional style lint (if installed): `ruff check src script run.py`
 - Optional format check (if installed): `black --check src script run.py`
 
 ### Tests
 Current state:
 - No dedicated `tests/` suite is checked in.
-- Available validation script: `python script/memory_db_query_test.py`
 When a pytest suite is present, use:
 - Run all tests: `pytest -q`
 - Run one file: `pytest tests/path/test_x.py -q`
@@ -71,6 +71,11 @@ When a pytest suite is present, use:
 - Run one test method: `pytest tests/path/test_x.py::TestClass::test_method -q`
 If using `unittest` style instead:
 - `python -m unittest tests.test_module.TestClass.test_method`
+
+### OpenHands runtime sanity checks
+- Verify SDK import: `python -c "from openhands.sdk import LLM, Agent, Conversation, Tool; print('ok')"`
+- Verify container-loaded config: `docker compose exec tanpopo python -c "from src.runtime import global_config; print(global_config.agent_config.get('openhands', {}))"`
+- Tail latest tanpopo logs: `docker compose logs --no-color --since=60s tanpopo`
 
 ## 5) Cursor / Copilot Rules
 Checked locations:
@@ -117,7 +122,7 @@ Use existing code patterns unless the user requests a refactor.
 ### Error handling and resilience
 - Wrap external I/O boundaries with `try/except` (LLM calls, DB calls, network parsing).
 - Log failures via module logger; include concise context.
-- Use retries for transient model/network failures (see `max_retrys` usage).
+- Let the OpenHands SDK handle transient model/network retries unless a narrower retry policy is explicitly needed.
 - Return safe defaults on recoverable parse failures when appropriate.
 - Raise exceptions only when callers should explicitly handle startup/config failures.
 
@@ -130,20 +135,17 @@ Use existing code patterns unless the user requests a refactor.
 - Read runtime settings from `global_config`; avoid hardcoding host/ports/models.
 - Never commit real API keys or sensitive values.
 - Keep `config.yaml` local; it is gitignored.
-
-### Data and DB access
-- Use `Database` wrapper methods instead of direct raw client calls where possible.
-- Keep memory/document payload keys consistent with existing schema (`_id`, `summary`, `embedding`, etc.).
-- Preserve backward compatibility when adding new document fields.
+- For OpenAI-compatible endpoints, set `llm_auth.base_url` to an API root like `http://host.docker.internal:7700/v1`.
+- Configure agent tools through `agent_config.openhands.mcp_servers`; do not hardcode MCP servers in `AgentCore`.
+- Filter inbound messages through `agent_config.gateway` before forwarding them to the OpenHands agent.
 
 ### Testing guidance for new work
 - Add new tests under a dedicated `tests/` directory.
 - Prefer pytest naming: `tests/**/test_*.py`, `test_*` functions.
 - For async logic, test happy path + failure path (timeouts, malformed response, empty result).
-- For DB-related logic, isolate side effects or use dedicated test collections.
 
 ## 7) Agent Working Rules (Repo-specific)
 - Make minimal, focused diffs; avoid opportunistic rewrites.
 - Do not silently change config schema without updating templates/docs.
 - If you add tooling (ruff/black/pytest config), document exact commands in this file.
-- Prefer backward-compatible changes to bot event formats and memory records.
+- Prefer backward-compatible changes to bot event formats.
