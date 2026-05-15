@@ -1,12 +1,19 @@
 import asyncio
 import json
 import os
+from collections.abc import Sequence
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
 from openhands.sdk import Agent, AgentContext, Conversation, LLM
+from openhands.sdk.context.condenser import llm_summarizing_condenser
 from openhands.sdk.context.condenser import LLMSummarizingCondenser
+from openhands.sdk.context.prompts import render_template
+from openhands.sdk.event.base import LLMConvertibleEvent
+from openhands.sdk.event.condenser import Condensation
+from openhands.sdk.llm import Message, TextContent
 from openhands.sdk.skills import Skill, load_skills_from_dir
+from openhands.sdk.utils import maybe_truncate
 
 from ..adapters import InboundMessage, OneBotMessageAdapter
 from ..runtime import global_config, register_logger
@@ -47,6 +54,49 @@ DEFAULT_CONDENSER_CONFIG = {
     "keep_first": 2,
     "minimum_progress": 0.1,
 }
+
+
+class StreamingLLMSummarizingCondenser(LLMSummarizingCondenser):
+    def _generate_condensation(
+        self,
+        forgotten_events: Sequence[LLMConvertibleEvent],
+        summary_offset: int,
+        max_event_str_length: int | None = None,
+    ) -> Condensation:
+        assert len(forgotten_events) > 0, "No events to condense."
+
+        event_strings = [
+            maybe_truncate(str(forgotten_event), truncate_after=max_event_str_length)
+            for forgotten_event in forgotten_events
+        ]
+        prompt = render_template(
+            os.path.join(
+                os.path.dirname(llm_summarizing_condenser.__file__), "prompts"
+            ),
+            "summarizing_prompt.j2",
+            events=event_strings,
+        )
+        llm_response = self.llm.completion(
+            messages=[Message(role="user", content=[TextContent(text=prompt)])],
+            on_token=self._on_condensation_token,
+        )
+
+        summary = None
+        if llm_response.message.content:
+            first_content = llm_response.message.content[0]
+            if isinstance(first_content, TextContent):
+                summary = first_content.text
+
+        return Condensation(
+            forgotten_event_ids=[event.id for event in forgotten_events],
+            summary=summary,
+            summary_offset=summary_offset,
+            llm_response_id=llm_response.id,
+        )
+
+    @staticmethod
+    def _on_condensation_token(_: object) -> None:
+        return
 
 
 class AgentCore:
@@ -174,7 +224,7 @@ class AgentCore:
             "启用 OpenHands context condenser: "
             f"max_size={condenser_config.get('max_size')} max_tokens={max_tokens}"
         )
-        return LLMSummarizingCondenser(
+        return StreamingLLMSummarizingCondenser(
             llm=self.llm,
             max_size=_positive_int(condenser_config.get("max_size"), 80),
             max_tokens=max_tokens,
