@@ -1,8 +1,12 @@
 import asyncio
 import json
+import logging
 import os
+import time
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 from openhands.sdk import Agent, AgentContext, Conversation, LLM
@@ -15,28 +19,31 @@ from openhands.sdk.llm import Message, TextContent
 from openhands.sdk.skills import Skill, load_skills_from_dir
 from openhands.sdk.utils import maybe_truncate
 
-from ..adapters import InboundMessage, OneBotMessageAdapter
+from ..adapters import IncomingEvent
 from ..runtime import global_config, register_logger
-from ..runtime.gateway import MessageGateway
 from ..runtime.mcp import build_mcp_config
 from ..runtime.registry import (
     load_runtime_config,
     load_skill_settings,
     reload_request_mtime,
 )
-from ..event import MessageEvent
-from ..ws import WS
 
 
 logger = register_logger("agent", global_config.log_level)
-HOT_GATEWAY_KEYS = {
-    "enabled",
-    "allowed_sessions",
-    "allowed_private_users",
-    "allowed_groups",
-    "allow_private_without_list",
+TRACE_LOGGERS = ("openhands", "fastmcp", "mcp", "litellm", "LiteLLM")
+HOT_OPENHANDS_KEYS = {
+    "model",
+    "system_prompt",
+    "workspace",
+    "condenser",
+    "debug_trace",
+    "prewarm",
 }
-HOT_OPENHANDS_KEYS = {"model", "system_prompt", "workspace", "condenser"}
+HOT_CONTEXT_KEYS = {
+    "idle_ttl_seconds",
+    "max_active_contexts",
+    "turn_timeout_seconds",
+}
 HOT_CONDENSER_KEYS = {
     "enabled",
     "max_size",
@@ -46,6 +53,7 @@ HOT_CONDENSER_KEYS = {
     "hard_context_reset_max_retries",
     "hard_context_reset_context_scaling",
 }
+HOT_PREWARM_KEYS = {"enabled", "timeout_seconds"}
 HOT_LLM_AUTH_KEYS = {"api_key", "base_url"}
 DEFAULT_CONDENSER_CONFIG = {
     "enabled": True,
@@ -54,6 +62,27 @@ DEFAULT_CONDENSER_CONFIG = {
     "keep_first": 2,
     "minimum_progress": 0.1,
 }
+DEFAULT_CONTEXT_CONFIG = {
+    "idle_ttl_seconds": 21600,
+    "max_active_contexts": 128,
+    "turn_timeout_seconds": 120,
+}
+DEFAULT_PREWARM_CONFIG = {
+    "enabled": True,
+    "timeout_seconds": 90,
+}
+PREWARM_CONTEXT_ID = "__tanpopo__:prewarm"
+
+
+@dataclass
+class ContextState:
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    buffer: list[IncomingEvent] = field(default_factory=list)
+    busy: bool = False
+    close_requested: bool = False
+    runner: asyncio.Task | None = None
+    last_active_at: float = field(default_factory=time.time)
+    message_count: int = 0
 
 
 class StreamingLLMSummarizingCondenser(LLMSummarizingCondenser):
@@ -100,17 +129,14 @@ class StreamingLLMSummarizingCondenser(LLMSummarizingCondenser):
 
 
 class AgentCore:
-    def __init__(self, ws: WS):
-        self.ws = ws
+    def __init__(self):
         self.workspace_root = Path.cwd().resolve()
 
-        self.locks: dict[str, asyncio.Lock] = {}
+        self.contexts: dict[str, ContextState] = {}
+        self._contexts_lock = asyncio.Lock()
         self.conversations: dict[str, Conversation] = {}
-        self.message_buffers: dict[str, list[InboundMessage]] = {}
-        self.active_sessions: set[str] = set()
         self._init_lock = asyncio.Lock()
         self.runtime_config = load_runtime_config(self.workspace_root)
-        self.gateway = MessageGateway(self._effective_agent_config().get("gateway", {}))
 
         self.llm: LLM | None = None
         self.agent: Agent | None = None
@@ -180,6 +206,7 @@ class AgentCore:
             agent_config,
             self.workspace_root,
             global_config.http_settings,
+            global_config.core_settings,
         )
         system_prompt = (
             str(openhands_config.get("system_prompt", "")).strip()
@@ -246,10 +273,10 @@ class AgentCore:
             override_agent_config = {}
         hot_override: dict[str, object] = {}
 
-        gateway = override_agent_config.get("gateway")
-        if isinstance(gateway, dict):
-            hot_override["gateway"] = {
-                key: value for key, value in gateway.items() if key in HOT_GATEWAY_KEYS
+        context = override_agent_config.get("context")
+        if isinstance(context, dict):
+            hot_override["context"] = {
+                key: value for key, value in context.items() if key in HOT_CONTEXT_KEYS
             }
 
         openhands = override_agent_config.get("openhands")
@@ -263,6 +290,12 @@ class AgentCore:
                         condenser_key: condenser_value
                         for condenser_key, condenser_value in value.items()
                         if condenser_key in HOT_CONDENSER_KEYS
+                    }
+                elif key == "prewarm" and isinstance(value, dict):
+                    filtered_openhands[key] = {
+                        prewarm_key: prewarm_value
+                        for prewarm_key, prewarm_value in value.items()
+                        if prewarm_key in HOT_PREWARM_KEYS
                     }
                 else:
                     filtered_openhands[key] = value
@@ -309,28 +342,31 @@ class AgentCore:
     @staticmethod
     def _default_system_prompt() -> str:
         return (
-            "You are Tanpopo, a QQ chat agent. You receive one normalized message batch as JSON. "
-            "The JSON has a messages array and may contain one or more buffered messages from "
-            "the same QQ session. Treat the messages as a short conversation fragment in arrival "
-            "order, focus on the latest user intent, and avoid replying separately to every item "
-            "unless that is clearly useful. "
-            "Use available MCP tools to act. For QQ replies, call qq_send_text with the target "
-            "metadata from the relevant message, usually the latest message. Keep chat replies "
-            "short and casual: usually one sentence, at most two short sentences. Do not write "
-            "long explanations, numbered lists, or full analysis unless the user explicitly asks "
-            "for detail. When a useful answer is too long for one chat message, split it into "
-            "several natural qq_send_text calls instead of one wall of text. You do not need to "
-            "reply to every message. In groups, stay quiet unless the message is directed at you, "
-            "asks for your help, or you have a clearly useful and natural contribution. For short "
-            "punctuation, ambient chatter, or messages that do not need your participation, finish "
-            "with DONE without calling a QQ send tool. If a tool call succeeds and no further "
-            "user-visible action is useful, finish with DONE instead of calling another tool. The "
-            "sender's nickname, group card, and display name are available in each message's "
-            "metadata. If you are unsure what tools or skills are currently enabled, call "
-            "runtime_capabilities before answering. If the user asks you to add, enable, disable, "
-            "or inspect skills/MCPs, use plugin-manager and capability MCP tools instead of "
-            "guessing. Runtime plugin changes take effect after a reload request and the next "
-            "message."
+            "You are Tanpopo, an event-driven chat agent. You receive one normalized event batch "
+            "as JSON. The JSON has context_id and events fields, and each event has payload. "
+            "For OneBot QQ messages, payload.raw is the original OneBot event and already contains "
+            "message_type, group_id, user_id, message_id, sender, and message segments. Treat "
+            "buffered events as a short fragment in arrival order, focus on the latest actionable "
+            "intent, and avoid replying separately to every item unless useful. Use available MCP "
+            "tools to act. For QQ replies, call qq_send_text with fields from the relevant "
+            "payload.raw, usually the latest event. Keep chat replies short and casual: usually "
+            "one sentence, at most two short sentences. Do not write long explanations, numbered "
+            "lists, or full analysis unless the user explicitly asks for detail. When a useful "
+            "answer is too long for one chat message, split it into several natural qq_send_text "
+            "calls instead of one wall of text. You do not need to reply to every event. In groups, "
+            "stay quiet unless the message is directed at you, asks for your help, or you have a "
+            "clearly useful and natural contribution. For short punctuation, ambient chatter, or "
+            "events that do not need your participation, finish with DONE without calling a QQ send "
+            "tool. If a tool call succeeds and no further user-visible action is useful, finish "
+            "with DONE instead of calling another tool. If you want to forget a stale short-term "
+            "conversation, use the context MCP tools to close or reset that context. If you are "
+            "unsure what tools or skills are currently enabled, call runtime_capabilities before "
+            "answering. If the user asks you to inspect a webpage or URL, use fetch tools when "
+            "available and summarize briefly. If the user asks you to add, enable, disable, or "
+            "inspect skills/MCPs, use plugin-manager and capability MCP tools instead of guessing. "
+            "Write self-authored reusable MCP plugins under .agents/mcps/{name}/server.py, register "
+            "them with plugin-manager, and keep scratch files in agent_workspace or tmp. Runtime "
+            "plugin changes take effect after a reload request and the next message."
         )
 
     async def _ensure_agent_ready(self) -> None:
@@ -339,9 +375,51 @@ class AgentCore:
         async with self._init_lock:
             if self.agent is not None and self.llm is not None:
                 return
+            self._configure_trace_logging()
             self.llm = self._build_llm()
             self.agent = self._build_agent()
             self._loaded_reload_mtime = reload_request_mtime(self.workspace_root)
+
+    async def prewarm(self) -> bool:
+        prewarm_config = self._prewarm_config()
+        if not _bool_value(prewarm_config.get("enabled"), True):
+            logger.info("OpenHands 启动预热已禁用")
+            return False
+
+        timeout_seconds = _positive_int(
+            prewarm_config.get("timeout_seconds"),
+            int(DEFAULT_PREWARM_CONFIG["timeout_seconds"]),
+        )
+        logger.info(f"开始 OpenHands 启动预热 timeout={timeout_seconds}s")
+        event = IncomingEvent(
+            context_id=PREWARM_CONTEXT_ID,
+            payload={
+                "type": "prewarm",
+                "text": (
+                    "Startup prewarm only. Do not call tools. "
+                    "Reply exactly DONE."
+                ),
+                "raw": {},
+            },
+        )
+
+        try:
+            ok = await self._run_openhands_agent_loop(
+                PREWARM_CONTEXT_ID,
+                [event],
+                timeout_seconds=timeout_seconds,
+            )
+        except Exception as exc:
+            logger.warning(f"OpenHands 启动预热失败: {exc}")
+            ok = False
+        finally:
+            self.conversations.pop(PREWARM_CONTEXT_ID, None)
+
+        if ok:
+            logger.info("OpenHands 启动预热完成")
+        else:
+            logger.warning("OpenHands 启动预热未完成，继续启动服务")
+        return ok
 
     async def _reload_agent_if_requested(self) -> None:
         current_mtime = reload_request_mtime(self.workspace_root)
@@ -352,140 +430,366 @@ class AgentCore:
             if current_mtime <= self._loaded_reload_mtime:
                 return
             logger.info("检测到 reload 请求，重建 agent 和会话")
-            self.runtime_config = load_runtime_config(self.workspace_root)
-            self.gateway = MessageGateway(
-                self._effective_agent_config().get("gateway", {})
-            )
-            self.agent = None
+            previous_runtime_config = self.runtime_config
+            previous_llm = self.llm
+            previous_agent = self.agent
+            try:
+                self.runtime_config = load_runtime_config(self.workspace_root)
+                self._configure_trace_logging()
+                new_llm = self._build_llm()
+                self.llm = new_llm
+                new_agent = self._build_agent()
+            except Exception as exc:
+                self.runtime_config = previous_runtime_config
+                self.llm = previous_llm
+                self.agent = previous_agent
+                self._loaded_reload_mtime = current_mtime
+                logger.error(f"重建 agent 失败，保留旧实例: {exc}")
+                return
+
+            self.llm = new_llm
+            self.agent = new_agent
             self.conversations.clear()
-            self.llm = self._build_llm()
-            self.agent = self._build_agent()
             self._loaded_reload_mtime = current_mtime
 
-    def _get_session_lock(self, session_id: str) -> asyncio.Lock:
-        lock = self.locks.get(session_id)
-        if lock is None:
-            lock = asyncio.Lock()
-            self.locks[session_id] = lock
-        return lock
+    def _context_config(self) -> dict[str, object]:
+        raw_config = self._effective_agent_config().get("context", {})
+        context_config = dict(DEFAULT_CONTEXT_CONFIG)
+        if isinstance(raw_config, dict):
+            context_config.update(
+                {
+                    key: value
+                    for key, value in raw_config.items()
+                    if key in HOT_CONTEXT_KEYS
+                }
+            )
+        return context_config
 
-    def _get_or_create_conversation(self, session_id: str) -> Conversation:
-        conversation = self.conversations.get(session_id)
+    def _prewarm_config(self) -> dict[str, object]:
+        openhands_config = self._effective_agent_config().get("openhands", {})
+        raw_config = {}
+        if isinstance(openhands_config, dict):
+            candidate = openhands_config.get("prewarm", {})
+            if isinstance(candidate, dict):
+                raw_config = candidate
+
+        prewarm_config = dict(DEFAULT_PREWARM_CONFIG)
+        prewarm_config.update(
+            {
+                key: value
+                for key, value in raw_config.items()
+                if key in HOT_PREWARM_KEYS
+            }
+        )
+        return prewarm_config
+
+    def _turn_timeout_seconds(self) -> int:
+        context_config = self._context_config()
+        return _non_negative_int(
+            context_config.get("turn_timeout_seconds"),
+            int(DEFAULT_CONTEXT_CONFIG["turn_timeout_seconds"]),
+        )
+
+    def _debug_trace_enabled(self) -> bool:
+        openhands_config = self._effective_agent_config().get("openhands", {})
+        if not isinstance(openhands_config, dict):
+            return False
+        return _bool_value(openhands_config.get("debug_trace"), False)
+
+    def _configure_trace_logging(self) -> None:
+        level = logging.INFO if self._debug_trace_enabled() else logging.ERROR
+        for logger_name in TRACE_LOGGERS:
+            logging.getLogger(logger_name).setLevel(level)
+
+    async def _get_context_state(self, context_id: str) -> ContextState:
+        async with self._contexts_lock:
+            self._cleanup_contexts_locked()
+            state = self.contexts.get(context_id)
+            if state is None:
+                state = ContextState()
+                self.contexts[context_id] = state
+            return state
+
+    def _cleanup_contexts_locked(self) -> None:
+        context_config = self._context_config()
+        idle_ttl = _positive_int(
+            context_config.get("idle_ttl_seconds"),
+            int(DEFAULT_CONTEXT_CONFIG["idle_ttl_seconds"]),
+        )
+        max_active = _positive_int(
+            context_config.get("max_active_contexts"),
+            int(DEFAULT_CONTEXT_CONFIG["max_active_contexts"]),
+        )
+        now = time.time()
+
+        for context_id, state in list(self.contexts.items()):
+            if state.busy:
+                continue
+            if now - state.last_active_at > idle_ttl:
+                self.contexts.pop(context_id, None)
+                self.conversations.pop(context_id, None)
+                logger.info(f"回收空闲上下文[{context_id}]")
+
+        if len(self.contexts) <= max_active:
+            return
+
+        idle_contexts = [
+            (context_id, state)
+            for context_id, state in self.contexts.items()
+            if not state.busy
+        ]
+        idle_contexts.sort(key=lambda item: item[1].last_active_at)
+        for context_id, _ in idle_contexts[
+            : max(0, len(self.contexts) - max_active)
+        ]:
+            self.contexts.pop(context_id, None)
+            self.conversations.pop(context_id, None)
+            logger.info(f"按 LRU 回收上下文[{context_id}]")
+
+    def _get_or_create_conversation(self, context_id: str) -> Conversation:
+        conversation = self.conversations.get(context_id)
         if conversation is not None:
             return conversation
 
         if self.agent is None:
             raise RuntimeError("Agent is not initialized")
 
+        self._configure_trace_logging()
         openhands_config = self._effective_agent_config().get("openhands", {})
-        workspace = str(openhands_config.get("workspace", "")).strip() or str(self.workspace_root)
-        conversation = Conversation(
-            agent=self.agent,
-            workspace=workspace,
-            token_callbacks=[self._on_token],
+        workspace = str(openhands_config.get("workspace", "")).strip() or str(
+            self.workspace_root
         )
-        self.conversations[session_id] = conversation
+        conversation_kwargs: dict[str, Any] = {
+            "agent": self.agent,
+            "workspace": workspace,
+            "token_callbacks": [self._on_token],
+        }
+        if not self._debug_trace_enabled():
+            conversation_kwargs["visualizer"] = None
+        conversation = Conversation(**conversation_kwargs)
+        self.conversations[context_id] = conversation
         return conversation
 
     @staticmethod
     def _on_token(_: object) -> None:
         return
 
-    async def handle_message(self, message_event: MessageEvent) -> None:
-        inbound = OneBotMessageAdapter.from_event(message_event)
+    async def handle_incoming_event(self, event: IncomingEvent) -> None:
         await self._reload_agent_if_requested()
-        decision = self.gateway.decide(inbound)
-        if not decision.accepted:
-            logger.info(f"网关拒绝消息[{inbound.session_id}]: {decision.reason}")
-            return
 
-        session_id = inbound.session_id
-        lock = self._get_session_lock(session_id)
-        async with lock:
-            if session_id in self.active_sessions:
-                self.message_buffers.setdefault(session_id, []).append(inbound)
+        context_id = event.context_id
+        state = await self._get_context_state(context_id)
+        async with state.lock:
+            state.last_active_at = time.time()
+            state.message_count += 1
+            if state.busy:
+                state.buffer.append(event)
                 logger.info(
-                    f"会话处理中，消息进入缓冲[{session_id}] "
-                    f"buffer={len(self.message_buffers[session_id])}"
+                    f"上下文处理中，事件进入缓冲[{context_id}] "
+                    f"buffer={len(state.buffer)}"
                 )
                 return
-            self.active_sessions.add(session_id)
+            initial_events = [*state.buffer, event]
+            state.buffer = []
+            state.busy = True
+            state.close_requested = False
 
-        messages = [inbound]
-        while messages:
-            await self._run_openhands_agent_loop(messages)
-            async with lock:
-                messages = self.message_buffers.pop(session_id, [])
-                if messages:
-                    logger.info(f"处理缓冲消息[{session_id}] count={len(messages)}")
-                else:
-                    self.active_sessions.discard(session_id)
+        runner = asyncio.create_task(
+            self._run_context_loop(context_id, initial_events)
+        )
+        state.runner = runner
+        runner.add_done_callback(self._log_context_runner_result)
+
+    async def _run_context_loop(
+        self, context_id: str, events: list[IncomingEvent]
+    ) -> None:
+        try:
+            current_events = events
+            while current_events:
+                await self._run_openhands_agent_loop(context_id, current_events)
+
+                state = self.contexts.get(context_id)
+                if state is None:
                     return
 
-    async def _run_openhands_agent_loop(self, messages: list[InboundMessage]) -> None:
-        non_empty_messages = [message for message in messages if message.text]
-        if not non_empty_messages:
-            logger.debug("空消息批次，跳过")
-            return
+                remove_context = False
+                async with state.lock:
+                    state.last_active_at = time.time()
+                    if state.close_requested:
+                        state.buffer.clear()
+                        state.busy = False
+                        state.runner = None
+                        remove_context = True
+                        current_events = []
+                    else:
+                        current_events = state.buffer
+                        state.buffer = []
+                        if current_events:
+                            logger.info(
+                                f"处理缓冲事件[{context_id}] count={len(current_events)}"
+                            )
+                        else:
+                            state.busy = False
+                            state.runner = None
+                            return
 
-        session_id = non_empty_messages[0].session_id
+                if remove_context:
+                    await self._remove_context(context_id)
+                    return
+        finally:
+            state = self.contexts.get(context_id)
+            if state is not None:
+                async with state.lock:
+                    state.busy = False
+                    state.runner = None
+
+    async def _run_openhands_agent_loop(
+        self,
+        context_id: str,
+        events: list[IncomingEvent],
+        timeout_seconds: int | None = None,
+    ) -> bool:
         logger.info(
-            f"openhands收到消息批次[{session_id}] count={len(non_empty_messages)} "
-            f"-> {self._summarize_batch_text(non_empty_messages)}"
+            f"openhands收到事件批次[{context_id}] count={len(events)} "
+            f"-> {self._summarize_batch_text(events)}"
         )
 
         await self._ensure_agent_ready()
         await self._reload_agent_if_requested()
-        conversation = self._get_or_create_conversation(session_id)
+        conversation = self._get_or_create_conversation(context_id)
         prompt = json.dumps(
-            self._build_batch_payload(non_empty_messages), ensure_ascii=False
+            self._build_batch_payload(context_id, events), ensure_ascii=False
         )
 
-        await asyncio.to_thread(conversation.send_message, prompt)
+        timeout = (
+            self._turn_timeout_seconds()
+            if timeout_seconds is None
+            else _non_negative_int(timeout_seconds, self._turn_timeout_seconds())
+        )
         try:
-            await asyncio.to_thread(conversation.run)
+            turn = asyncio.to_thread(self._run_conversation_sync, conversation, prompt)
+            if timeout > 0:
+                await asyncio.wait_for(turn, timeout=timeout)
+            else:
+                await turn
+        except TimeoutError:
+            self.conversations.pop(context_id, None)
+            logger.error(
+                f"OpenHands回合超时[{context_id}] timeout={timeout}s，"
+                "已丢弃该上下文会话"
+            )
+            return False
         except Exception as exc:
-            logger.error(f"OpenHands回合失败[{session_id}]: {exc}")
-            return
+            logger.error(f"OpenHands回合失败[{context_id}]: {exc}")
+            return False
 
-        logger.info(f"openhands回合完成[{session_id}]")
+        logger.info(f"openhands回合完成[{context_id}]")
+        return True
 
     @staticmethod
-    def _summarize_batch_text(messages: list[InboundMessage]) -> str:
-        text = " | ".join(message.text for message in messages)
+    def _run_conversation_sync(conversation: Conversation, prompt: str) -> None:
+        conversation.send_message(prompt)
+        conversation.run()
+
+    @staticmethod
+    def _log_context_runner_result(task: asyncio.Task) -> None:
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            return
+        except Exception as exc:
+            logger.error(f"上下文处理任务失败: {exc}")
+
+    @staticmethod
+    def _summarize_batch_text(events: list[IncomingEvent]) -> str:
+        text = " | ".join(AgentCore._event_display_text(event) for event in events)
         return text[:500]
 
     @staticmethod
-    def _build_batch_payload(messages: list[InboundMessage]) -> dict[str, object]:
-        first = messages[0]
-        latest = messages[-1]
+    def _build_batch_payload(
+        context_id: str, events: list[IncomingEvent]
+    ) -> dict[str, object]:
         lines = []
-        for index, message in enumerate(messages, start=1):
-            display_name = message.metadata.get("sender_display_name") or str(
-                message.metadata.get("user_id", "")
-            )
-            lines.append(f"{index}. {display_name}: {message.text}")
+        for index, event in enumerate(events, start=1):
+            lines.append(f"{index}. {AgentCore._event_display_text(event)}")
 
         return {
-            "session_id": first.session_id,
-            "channel": first.channel,
-            "message_count": len(messages),
+            "context_id": context_id,
+            "event_count": len(events),
             "text": "\n".join(lines),
-            "latest_metadata": latest.metadata,
-            "messages": [
+            "latest_event": events[-1].to_dict(),
+            "events": [
                 {
                     "index": index,
-                    **message.to_agent_payload(),
+                    **event.to_dict(),
                 }
-                for index, message in enumerate(messages, start=1)
+                for index, event in enumerate(events, start=1)
             ],
             "instruction": (
-                "You are receiving one or more buffered messages from the same QQ session. "
-                "Read them in order, answer the latest actionable user intent, and use the "
-                "metadata from the relevant message as the QQ reply target. Usually send at "
-                "most one concise QQ reply for the whole batch, then finish with DONE."
+                "You are receiving one or more buffered events from the same context_id. "
+                "Read them in order and answer the latest actionable intent. For OneBot QQ "
+                "messages, use payload.raw from the relevant event as the qq_send_text target "
+                "source. Usually send at most one concise QQ reply for the whole batch, then "
+                "finish with DONE."
             ),
         }
+
+    @staticmethod
+    def _event_display_text(event: IncomingEvent) -> str:
+        raw = event.raw
+        sender = raw.get("sender")
+        display_name = ""
+        if isinstance(sender, dict):
+            display_name = (
+                str(sender.get("card") or sender.get("nickname") or "").strip()
+            )
+        if not display_name:
+            display_name = str(raw.get("user_id") or event.context_id)
+
+        text = event.text
+        if not text:
+            text = f"[{event.event_type}]"
+        return f"{display_name}: {text}"
+
+    async def list_contexts(self) -> list[dict[str, Any]]:
+        async with self._contexts_lock:
+            self._cleanup_contexts_locked()
+            return [
+                {
+                    "context_id": context_id,
+                    "busy": state.busy,
+                    "buffer_size": len(state.buffer),
+                    "last_active_at": state.last_active_at,
+                    "message_count": state.message_count,
+                    "has_conversation": context_id in self.conversations,
+                }
+                for context_id, state in sorted(self.contexts.items())
+            ]
+
+    async def close_context(self, context_id: str) -> bool:
+        state = self.contexts.get(context_id)
+        if state is None:
+            self.conversations.pop(context_id, None)
+            return False
+
+        async with state.lock:
+            state.buffer.clear()
+            state.close_requested = True
+            self.conversations.pop(context_id, None)
+            if state.busy:
+                return True
+
+        await self._remove_context(context_id)
+        return True
+
+    async def reset_context(self, context_id: str) -> bool:
+        return await self.close_context(context_id)
+
+    async def _remove_context(self, context_id: str) -> None:
+        async with self._contexts_lock:
+            self.contexts.pop(context_id, None)
+            self.conversations.pop(context_id, None)
+        logger.info(f"关闭上下文[{context_id}]")
 
 
 def _deep_merge(base: dict[str, object], override: dict[str, object]) -> dict[str, object]:
@@ -527,3 +831,17 @@ def _bounded_float(value: object, default: float) -> float:
     except (TypeError, ValueError):
         return default
     return parsed if 0.0 < parsed < 1.0 else default
+
+
+def _bool_value(value: object, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    if isinstance(value, str):
+        clean = value.strip().lower()
+        if clean in {"1", "true", "yes", "on"}:
+            return True
+        if clean in {"0", "false", "no", "off"}:
+            return False
+    return bool(value)

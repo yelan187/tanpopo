@@ -23,15 +23,23 @@ mcp = FastMCP("tanpopo-plugin-manager")
 NAME_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
 HOT_CONFIG_SCHEMA: dict[str, dict[str, set[str]]] = {
     "llm_auth": {"": {"api_key", "base_url"}},
-    "agent_config": {
-        "gateway": {
+    "adapter_config": {
+        "onebot.gateway": {
             "enabled",
             "allowed_sessions",
             "allowed_private_users",
             "allowed_groups",
             "allow_private_without_list",
         },
-        "openhands": {"model", "system_prompt", "workspace"},
+    },
+    "agent_config": {
+        "context": {
+            "idle_ttl_seconds",
+            "max_active_contexts",
+            "turn_timeout_seconds",
+        },
+        "openhands": {"model", "system_prompt", "workspace", "debug_trace"},
+        "openhands.prewarm": {"enabled", "timeout_seconds"},
         "openhands.condenser": {
             "enabled",
             "max_size",
@@ -272,6 +280,16 @@ def _sanitize_runtime_config(config: dict[str, Any]) -> dict[str, Any]:
                     )
                     continue
 
+                if subsection == "context":
+                    if not isinstance(subsection_value, dict):
+                        raise ValueError("agent_config.context must be an object")
+                    agent_config[subsection] = _filter_keys(
+                        subsection_value,
+                        HOT_CONFIG_SCHEMA["agent_config"]["context"],
+                        "agent_config.context",
+                    )
+                    continue
+
                 if subsection not in HOT_CONFIG_SCHEMA["agent_config"]:
                     raise ValueError(f"unsupported hot config section: agent_config.{subsection}")
                 if not isinstance(subsection_value, dict):
@@ -282,6 +300,21 @@ def _sanitize_runtime_config(config: dict[str, Any]) -> dict[str, Any]:
                     f"agent_config.{subsection}",
                 )
             result[section] = agent_config
+            continue
+
+        if section == "adapter_config":
+            if not isinstance(value, dict):
+                raise ValueError("adapter_config must be an object")
+            adapter_config: dict[str, Any] = {}
+            for adapter_name, adapter_value in value.items():
+                if adapter_name != "onebot":
+                    raise ValueError(
+                        f"unsupported hot config section: adapter_config.{adapter_name}"
+                    )
+                if not isinstance(adapter_value, dict):
+                    raise ValueError("adapter_config.onebot must be an object")
+                adapter_config[adapter_name] = _sanitize_onebot_config(adapter_value)
+            result[section] = adapter_config
             continue
 
         raise ValueError(f"unsupported hot config section: {section}")
@@ -310,9 +343,33 @@ def _sanitize_openhands_config(value: dict[str, Any]) -> dict[str, Any]:
                 "agent_config.openhands.condenser",
             )
             continue
+        if key == "prewarm":
+            if not isinstance(item, dict):
+                raise ValueError("agent_config.openhands.prewarm must be an object")
+            result[key] = _filter_keys(
+                item,
+                HOT_CONFIG_SCHEMA["agent_config"]["openhands.prewarm"],
+                "agent_config.openhands.prewarm",
+            )
+            continue
         if key not in allowed:
             raise ValueError(f"unsupported hot config key: agent_config.openhands.{key}")
         result[str(key)] = item
+    return result
+
+
+def _sanitize_onebot_config(value: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, item in value.items():
+        if key != "gateway":
+            raise ValueError(f"unsupported hot config key: adapter_config.onebot.{key}")
+        if not isinstance(item, dict):
+            raise ValueError("adapter_config.onebot.gateway must be an object")
+        result[key] = _filter_keys(
+            item,
+            HOT_CONFIG_SCHEMA["adapter_config"]["onebot.gateway"],
+            "adapter_config.onebot.gateway",
+        )
     return result
 
 

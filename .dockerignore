@@ -1,5 +1,6 @@
 test/
 tmp/
+agent_workspace/
 .git
 __pycache__/
 .DS_Store

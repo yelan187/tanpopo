@@ -55,8 +55,8 @@ def default_mcp_registry() -> dict[str, Any]:
             "fetch": {
                 "enabled": True,
                 "transport": "stdio",
-                "command": "uvx",
-                "args": ["mcp-server-fetch", "--ignore-robots-txt"],
+                "command": "mcp-server-fetch",
+                "args": ["--ignore-robots-txt"],
                 "cwd": ".",
                 "env": {
                     "PYTHONIOENCODING": "utf-8",
@@ -64,7 +64,7 @@ def default_mcp_registry() -> dict[str, Any]:
                 "description": "Official fetch MCP server for retrieving webpages as markdown.",
             },
             "filesystem": {
-                "enabled": True,
+                "enabled": False,
                 "transport": "stdio",
                 "command": "npx",
                 "args": ["-y", "@modelcontextprotocol/server-filesystem", "/"],
@@ -90,6 +90,15 @@ def default_mcp_registry() -> dict[str, Any]:
                 "env": {},
                 "description": "Inspect enabled MCPs, skills, and runtime state.",
             },
+            "context": {
+                "enabled": True,
+                "transport": "stdio",
+                "command": "",
+                "args": ["-m", "src.mcp.context"],
+                "cwd": ".",
+                "env": {},
+                "description": "Inspect and close short-term Core contexts.",
+            },
             "plugin_manager": {
                 "enabled": True,
                 "transport": "stdio",
@@ -110,8 +119,13 @@ def default_skill_registry() -> dict[str, Any]:
 def default_runtime_config() -> dict[str, Any]:
     return {
         "llm_auth": {},
+        "adapter_config": {
+            "onebot": {
+                "gateway": {},
+            },
+        },
         "agent_config": {
-            "gateway": {},
+            "context": {},
             "openhands": {},
         },
     }

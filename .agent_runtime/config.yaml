@@ -1,4 +1,7 @@
 llm_auth: {}
+adapter_config:
+  onebot:
+    gateway: {}
 agent_config:
-  gateway: {}
+  context: {}
   openhands: {}

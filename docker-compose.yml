@@ -19,17 +19,27 @@ services:
     container_name: tanpopo
     build:
       context: .
+      args:
+        PIP_INDEX_URL: https://mirrors.zju.edu.cn/pypi/web/simple
     depends_on:
       - napcat
     environment:
       - ENV=DOCKER
       - TZ=Asia/Shanghai
+      - LITELLM_LOCAL_MODEL_COST_MAP=True
+      - LITELLM_LOG=ERROR
+      - OPENHANDS_SUPPRESS_BANNER=1
+      - FASTMCP_SHOW_SERVER_BANNER=false
+      - FASTMCP_LOG_LEVEL=ERROR
+    ports:
+      - 8080:8080
     restart: unless-stopped
     volumes:
       - napcatCONFIG:/napcat
       - ./config.yaml:/tanpopo/config.yaml
       - ./.agents:/tanpopo/.agents
       - ./.agent_runtime:/tanpopo/.agent_runtime
+      - ./agent_workspace:/tanpopo/agent_workspace
       - ./tmp:/tanpopo/tmp
 
 volumes:

@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Any
 
+import yaml
 from fastmcp import FastMCP
-from openhands.sdk.skills import load_skills_from_dir
 
 from src.runtime import global_config, register_logger
 from src.runtime.mcp import build_mcp_config
@@ -25,6 +25,7 @@ def runtime_capabilities() -> dict[str, Any]:
         global_config.agent_config,
         root,
         global_config.http_settings,
+        global_config.core_settings,
     )
     skills = _discover_skills(root)
     paths = runtime_paths(root)
@@ -55,24 +56,42 @@ def _discover_skills(root: Path) -> list[dict[str, Any]]:
     if not skills_dir.is_dir():
         return []
 
-    try:
-        repo_skills, knowledge_skills, agent_skills = load_skills_from_dir(skills_dir)
-    except Exception as exc:
-        logger.warning(f"发现 skills 失败: {exc}")
-        return []
-
     discovered = []
-    for skill in [*repo_skills.values(), *knowledge_skills.values(), *agent_skills.values()]:
-        skill_setting = settings.get(skill.name, {})
+    for path in sorted(skills_dir.glob("*/SKILL.md")):
+        metadata = _read_skill_metadata(path)
+        name = str(metadata.get("name") or path.parent.name).strip() or path.parent.name
+        skill_setting = settings.get(name, {})
         discovered.append(
             {
-                "name": skill.name,
+                "name": name,
                 "enabled": bool(skill_setting.get("enabled", True)),
-                "description": skill.description,
-                "source": skill.source,
+                "description": str(metadata.get("description") or ""),
+                "source": str(path),
             }
         )
     return discovered
+
+
+def _read_skill_metadata(path: Path) -> dict[str, Any]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.warning(f"读取 skill 失败[{path}]: {exc}")
+        return {}
+
+    if not text.startswith("---"):
+        return {}
+
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return {}
+
+    try:
+        data = yaml.safe_load(parts[1]) or {}
+    except yaml.YAMLError as exc:
+        logger.warning(f"解析 skill 元数据失败[{path}]: {exc}")
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 if __name__ == "__main__":

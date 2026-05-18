@@ -1,6 +1,7 @@
 test/
 img/
 tmp/
+agent_workspace/
 __pycache__/
 .VSCodeCounter/
 script/*.png

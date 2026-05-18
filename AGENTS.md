@@ -21,8 +21,9 @@ Current default architecture:
 - `run.py`: top-level startup script
 - `src/agent/core.py`: OpenHands conversation loop, per-session lock/isolation, MCP wiring
 - `src/adapters/onebot.py`: OneBot event to generic agent message adapter
-- `src/runtime/`: shared runtime config, logging, gateway, and MCP server normalization
+- `src/runtime/`: shared runtime config, logging, registry, and MCP server normalization
 - `src/mcp/qqio.py`: FastMCP server with OneBot APIs + memory tools
+- `.agents/mcps/`: tracked home for agent-authored MCP plugins
 - `src/ws/__init__.py`: WS client/server wrapper
 - `src/event/__init__.py`: message event and segment parsing
 - `template/config_template.yaml`: config template
@@ -137,7 +138,8 @@ Use existing code patterns unless the user requests a refactor.
 - Keep `config.yaml` local; it is gitignored.
 - For OpenAI-compatible endpoints, set `llm_auth.base_url` to an API root like `http://host.docker.internal:7700/v1`.
 - Configure agent tools through `agent_config.openhands.mcp_servers`; do not hardcode MCP servers in `AgentCore`.
-- Filter inbound messages through `agent_config.gateway` before forwarding them to the OpenHands agent.
+- Filter OneBot inbound messages through `adapter_config.onebot.gateway` before forwarding them to the Core HTTP webhook.
+- Put agent-authored reusable MCP plugins under `.agents/mcps/{name}/server.py`; use `agent_workspace/` or `tmp/` for scratch data.
 
 ### Testing guidance for new work
 - Add new tests under a dedicated `tests/` directory.

@@ -1,6 +1,15 @@
 colorama==0.4.6
+fastapi>=0.115.0,<1
 fastmcp>=3.2.4,<4
 openhands-sdk==1.19.1
+lmnr==0.7.49
+opentelemetry-api==1.39.1
+opentelemetry-sdk==1.39.1
+opentelemetry-instrumentation==0.60b1
+opentelemetry-instrumentation-threading==0.60b1
+opentelemetry-semantic-conventions==0.60b1
+opentelemetry-semantic-conventions-ai==0.4.13
 PyYAML==6.0.2
+uvicorn[standard]>=0.32.0,<1
 uv==0.9.13
 websockets==15.0.1

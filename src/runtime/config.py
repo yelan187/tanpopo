@@ -9,11 +9,31 @@ import yaml
 
 @dataclass
 class Config:
+    core_settings: dict[str, Any] = field(
+        default_factory=lambda: {
+            "host": "127.0.0.1",
+            "port": 8080,
+            "adapter_host": "127.0.0.1",
+        }
+    )
     http_settings: dict[str, Any] = field(
         default_factory=lambda: {"host": "127.0.0.1", "port": 3000}
     )
     ws_settings: dict[str, Any] = field(
         default_factory=lambda: {"host": "127.0.0.1", "port": 3001, "role": "client"}
+    )
+    adapter_config: dict[str, Any] = field(
+        default_factory=lambda: {
+            "onebot": {
+                "gateway": {
+                    "enabled": True,
+                    "allowed_sessions": [],
+                    "allowed_private_users": [],
+                    "allowed_groups": [],
+                    "allow_private_without_list": False,
+                },
+            },
+        }
     )
     llm_auth: dict[str, Any] = field(default_factory=dict)
     # Legacy fallback for older config.yaml files. New configs should use
@@ -22,17 +42,20 @@ class Config:
     agent_config: dict[str, Any] = field(
         default_factory=lambda: {
             "runtime": "openhands",
-            "gateway": {
-                "enabled": True,
-                "allowed_sessions": [],
-                "allowed_private_users": [],
-                "allowed_groups": [],
-                "allow_private_without_list": False,
+            "context": {
+                "idle_ttl_seconds": 21600,
+                "max_active_contexts": 128,
+                "turn_timeout_seconds": 120,
             },
             "openhands": {
                 "model": "gpt-5.4",
                 "workspace": ".",
                 "system_prompt": "",
+                "debug_trace": False,
+                "prewarm": {
+                    "enabled": True,
+                    "timeout_seconds": 90,
+                },
                 "condenser": {
                     "enabled": True,
                     "max_size": 80,
@@ -77,7 +100,8 @@ class Config:
             if isinstance(current_value, dict) and isinstance(field_value, dict):
                 setattr(config, field_name, _deep_merge(current_value, field_value))
             elif isinstance(current_value, list):
-                setattr(config, field_name, field_value if isinstance(field_value, list) else [])
+                value = field_value if isinstance(field_value, list) else []
+                setattr(config, field_name, value)
             else:
                 setattr(config, field_name, field_value)
 
@@ -99,6 +123,8 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 global_config = Config.from_yaml()
 
 if os.getenv("ENV") == "DOCKER":
+    global_config.core_settings["host"] = "0.0.0.0"
+    global_config.core_settings.setdefault("adapter_host", "127.0.0.1")
     global_config.ws_settings["host"] = "0.0.0.0"
     global_config.ws_settings["role"] = "server"
     global_config.http_settings["host"] = "napcat"
@@ -108,4 +134,3 @@ if os.getenv("ENV") == "DOCKER":
     qqio_env = qqio_server.setdefault("env", {})
     qqio_env.setdefault("TANPOPO_HTTP_HOST", "napcat")
     qqio_env.setdefault("TANPOPO_HTTP_PORT", "3000")
-    print("Using docker config")

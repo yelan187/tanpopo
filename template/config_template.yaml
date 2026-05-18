@@ -1,3 +1,8 @@
+core_settings:
+  host: "127.0.0.1"
+  port: 8080
+  adapter_host: "127.0.0.1"
+
 http_settings:
   host: "127.0.0.1"
   port: 3000
@@ -11,18 +16,29 @@ llm_auth:
   api_key: "your_api_key"
   base_url: "http://host.docker.internal:7700/v1"
 
+adapter_config:
+  onebot:
+    gateway:
+      enabled: true
+      allowed_sessions: [] # 例如 ["qq:private:123456", "qq:group:233"]
+      allowed_private_users: []
+      allowed_groups: []
+      allow_private_without_list: false
+
 agent_config:
   runtime: "openhands"
-  gateway:
-    enabled: true
-    allowed_sessions: [] # 例如 ["private:123456", "group:233"]
-    allowed_private_users: []
-    allowed_groups: []
-    allow_private_without_list: false
+  context:
+    idle_ttl_seconds: 21600
+    max_active_contexts: 128
+    turn_timeout_seconds: 120
   openhands:
     model: "gpt-5.4"
     workspace: "."
     system_prompt: ""
+    debug_trace: false
+    prewarm:
+      enabled: true
+      timeout_seconds: 90
     condenser:
       enabled: true
       max_size: 80

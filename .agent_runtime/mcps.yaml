@@ -12,16 +12,15 @@ servers:
   fetch:
     enabled: true
     transport: stdio
-    command: uvx
+    command: mcp-server-fetch
     args:
-      - mcp-server-fetch
       - --ignore-robots-txt
     cwd: "."
     env:
       PYTHONIOENCODING: utf-8
     description: Official fetch MCP server for retrieving webpages as markdown.
   filesystem:
-    enabled: true
+    enabled: false
     transport: stdio
     command: npx
     args:
@@ -51,6 +50,16 @@ servers:
     cwd: "."
     env: {}
     description: Inspect enabled MCPs, skills, and runtime state.
+  context:
+    enabled: true
+    transport: stdio
+    command: ""
+    args:
+      - -m
+      - src.mcp.context
+    cwd: "."
+    env: {}
+    description: Inspect and close short-term Core contexts.
   plugin_manager:
     enabled: true
     transport: stdio

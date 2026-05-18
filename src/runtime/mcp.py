@@ -10,6 +10,7 @@ def build_mcp_config(
     agent_config: dict[str, Any],
     workspace_root: Path,
     http_settings: dict[str, Any] | None = None,
+    core_settings: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     openhands_config = agent_config.get("openhands", {})
     configured_servers = openhands_config.get("mcp_servers")
@@ -27,7 +28,11 @@ def build_mcp_config(
         if not isinstance(server_config, dict):
             continue
         normalized = _normalize_server_config(
-            name, server_config, workspace_root, http_settings or {}
+            name,
+            server_config,
+            workspace_root,
+            http_settings or {},
+            core_settings or {},
         )
         if normalized is not None:
             servers[str(name)] = normalized
@@ -40,10 +45,11 @@ def _normalize_server_config(
     server_config: dict[str, Any],
     workspace_root: Path,
     http_settings: dict[str, Any],
+    core_settings: dict[str, Any],
 ) -> dict[str, Any] | None:
     command = str(server_config.get("command", "")).strip()
     if not command:
-        command = sys.executable
+        command = "mcp-server-fetch" if name == "fetch" else sys.executable
     if not command:
         return None
 
@@ -53,9 +59,11 @@ def _normalize_server_config(
     if name == "qqio" and not args:
         args = ["-m", "src.mcp.qqio"]
     if name == "fetch" and not args:
-        args = ["mcp-server-fetch"]
+        args = ["--ignore-robots-txt"]
     if name == "capability" and not args:
         args = ["-m", "src.mcp.capability"]
+    if name == "context" and not args:
+        args = ["-m", "src.mcp.context"]
     if name == "plugin_manager" and not args:
         args = ["-m", "src.mcp.plugin_manager"]
     if name == "workspace" and not args:
@@ -77,8 +85,11 @@ def _normalize_server_config(
         if isinstance(env, dict)
         else {}
     )
+    normalized_env.update(_shared_env(normalized_env, workspace_root))
     if name == "qqio":
         normalized_env.update(_qqio_env(workspace_root, normalized_env, http_settings))
+    if name == "context":
+        normalized_env.update(_context_env(normalized_env, core_settings))
 
     return {
         "transport": str(server_config.get("transport", "stdio")).strip() or "stdio",
@@ -99,6 +110,35 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
     return result
 
 
+def _shared_env(existing_env: dict[str, str], workspace_root: Path) -> dict[str, str]:
+    return {
+        "PYTHONPATH": existing_env.get(
+            "PYTHONPATH",
+            os.getenv("PYTHONPATH", str(workspace_root)),
+        ),
+        "FASTMCP_SHOW_SERVER_BANNER": existing_env.get(
+            "FASTMCP_SHOW_SERVER_BANNER",
+            os.getenv("FASTMCP_SHOW_SERVER_BANNER", "false"),
+        ),
+        "FASTMCP_LOG_LEVEL": existing_env.get(
+            "FASTMCP_LOG_LEVEL",
+            os.getenv("FASTMCP_LOG_LEVEL", "ERROR"),
+        ),
+        "LITELLM_LOG": existing_env.get(
+            "LITELLM_LOG",
+            os.getenv("LITELLM_LOG", "ERROR"),
+        ),
+        "LITELLM_LOCAL_MODEL_COST_MAP": existing_env.get(
+            "LITELLM_LOCAL_MODEL_COST_MAP",
+            os.getenv("LITELLM_LOCAL_MODEL_COST_MAP", "True"),
+        ),
+        "OPENHANDS_SUPPRESS_BANNER": existing_env.get(
+            "OPENHANDS_SUPPRESS_BANNER",
+            os.getenv("OPENHANDS_SUPPRESS_BANNER", "1"),
+        ),
+    }
+
+
 def _qqio_env(
     workspace_root: Path,
     existing_env: dict[str, str],
@@ -116,5 +156,21 @@ def _qqio_env(
         "TANPOPO_MEMORY_FILE": existing_env.get(
             "TANPOPO_MEMORY_FILE",
             str(workspace_root / "tmp" / "agent_memories.jsonl"),
+        ),
+    }
+
+
+def _context_env(
+    existing_env: dict[str, str], core_settings: dict[str, Any]
+) -> dict[str, str]:
+    host = str(core_settings.get("adapter_host", "")).strip()
+    if not host:
+        bind_host = str(core_settings.get("host", "127.0.0.1")).strip()
+        host = "127.0.0.1" if bind_host in {"0.0.0.0", "::"} else bind_host
+    port = str(core_settings.get("port", "8080")).strip() or "8080"
+    return {
+        "TANPOPO_CORE_URL": existing_env.get(
+            "TANPOPO_CORE_URL",
+            os.getenv("TANPOPO_CORE_URL", f"http://{host}:{port}"),
         ),
     }

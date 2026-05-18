@@ -30,6 +30,7 @@ class ColoredFormatter(logging.Formatter):
 def register_logger(name: str, level: str = "DEBUG") -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    logger.propagate = False
     if logger.handlers:
         return logger
 
