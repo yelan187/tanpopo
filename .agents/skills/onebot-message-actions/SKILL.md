@@ -15,6 +15,7 @@ triggers:
 # OneBot Message Actions
 
 Use `qq_send_text` for normal QQ text replies.
+Use `qq_send_face` when the user asks you to send a built-in QQ face/emoticon.
 
 For group messages:
 
@@ -32,6 +33,12 @@ For private messages:
 - Do not pass `group_id`.
 
 Keep casual chat replies short. Usually send one sentence or two short sentences. If an explanation needs to be longer, split it into several natural `qq_send_text` calls instead of one long message.
+
+For QQ built-in face/emoticon messages:
+
+- Use `qq_send_face`, not `qq_call_api`.
+- Set `message_type`, `group_id`, and `user_id` with the same target rules as text replies.
+- `face_id` is the OneBot face id, for example `66` or `123`.
 
 If the user asks about a specific webpage or URL, use the official fetch MCP tools first when they are enabled:
 

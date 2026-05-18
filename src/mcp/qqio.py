@@ -146,6 +146,33 @@ def qq_send_text(
 
 
 @mcp.tool
+def qq_send_face(
+    message_type: str,
+    face_id: int,
+    group_id: int | None = None,
+    user_id: int | None = None,
+    reply_to_message_id: int | None = None,
+) -> dict[str, Any]:
+    """Send a QQ face/emoticon segment by OneBot face id."""
+    try:
+        target = _message_target(message_type, group_id, user_id)
+    except ValueError as exc:
+        return {"ok": False, "error": str(exc)}
+
+    clean_face_id = str(int(face_id))
+    message: list[dict[str, Any]] = []
+    if reply_to_message_id is not None:
+        message.append({"type": "reply", "data": {"id": str(reply_to_message_id)}})
+    message.append({"type": "face", "data": {"id": clean_face_id}})
+
+    params: dict[str, Any] = {"message_type": message_type, "message": message}
+    params.update(target)
+    result = _post_onebot("send_msg", params)
+    logger.info(f"qqio发送表情 -> {json.dumps(message, ensure_ascii=False)}")
+    return result
+
+
+@mcp.tool
 def qq_send_image(
     message_type: str,
     file: str,
