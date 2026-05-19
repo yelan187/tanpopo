@@ -12,6 +12,10 @@
 
 - [在 🐳 Docker 上部署 tanpopo](docs/docker_implement.md)
 
+### 文档
+
+- [当前架构与功能说明](docs/current_architecture.md)
+
 ### 📦配置
 
 如果手动配置，请将[配置文件模板](template/config_template.yaml)复制到 `config.yaml`，然后根据需要修改。
