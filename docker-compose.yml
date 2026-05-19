@@ -20,7 +20,7 @@ services:
     build:
       context: .
       args:
-        PIP_INDEX_URL: https://mirrors.zju.edu.cn/pypi/web/simple
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.zju.edu.cn/pypi/web/simple}
     depends_on:
       - napcat
     environment:
@@ -37,9 +37,11 @@ services:
     volumes:
       - napcatCONFIG:/napcat
       - ./config.yaml:/tanpopo/config.yaml
+      - ./.git:/tanpopo/.git
       - ./.agents:/tanpopo/.agents
       - ./.agent_runtime:/tanpopo/.agent_runtime
       - ./agent_workspace:/tanpopo/agent_workspace
+      - ${TANPOPO_HOST_WORKSPACE:-./agent_workspace}:/tanpopo/host_workspace
       - ./tmp:/tanpopo/tmp
 
 volumes:

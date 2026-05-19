@@ -28,6 +28,11 @@ ws_settings:
   host: "0.0.0.0"     # 对 napcat 开放 ws 上报监听
   port: 3001
 
+workspace_settings:
+  host_workspace:
+    container_path: "/tanpopo/host_workspace"
+    env_var: "TANPOPO_HOST_WORKSPACE"
+
 adapter_config:
   onebot:
     gateway:
@@ -60,6 +65,14 @@ llm_auth:
 NAPCAT_UID=$(id -u) NAPCAT_GID=$(id -g) docker-compose up -d --build
 ```
 
+如需额外挂载一个宿主机目录给 Bot 自由访问，启动前设置
+`TANPOPO_HOST_WORKSPACE`。该目录在容器内固定为 `/tanpopo/host_workspace`：
+
+```bash
+TANPOPO_HOST_WORKSPACE=/absolute/host/path \
+NAPCAT_UID=$(id -u) NAPCAT_GID=$(id -g) docker-compose up -d --build
+```
+
 ### 4. 登录QQ
 
 通过napcat log返回的二维码，扫码登录QQ即可
@@ -70,6 +83,11 @@ docker logs napcat
 
 ### 5. 🆗开始和tanpopo对话吧
 
-运行时默认启用 `qqio`、`workspace`、`fetch`、`capability`、`context` 和
-`plugin_manager` MCP。Agent 自写的可复用 MCP 建议放在 `.agents/mcps/`，草稿、
-缓存和临时文件放在 `agent_workspace/` 或 `tmp/`。
+运行时默认启用 `qqio`、`workspace`、`fetch`、`capability`、`context`、
+`plugin_manager` 和 `git_ops` MCP。Agent 自写的可复用 MCP 建议放在
+`.agents/mcps/`，草稿、缓存和临时文件放在 `agent_workspace/`、`tmp/` 或额外挂载的
+`/tanpopo/host_workspace`。
+
+`git_ops` 默认只允许提交 `.agents/skills` 和 `.agents/mcps` 下的改动，并拒绝直接
+push `main/master`。如果要让 Bot push 到远端，需要容器内可用的 Git 凭据，例如
+HTTPS token、credential helper，或额外挂载 SSH key/known_hosts。

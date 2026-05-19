@@ -19,4 +19,4 @@ pyvenv.cfg
 .opencode
 .agent_runtime/history.jsonl
 .agent_runtime/reload_request.json
-onebot-11/
+onebot-11

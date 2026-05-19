@@ -12,6 +12,14 @@ ws_settings:
   port: 3001
   role: "client"
 
+# Docker 挂载在容器启动前生效。若要给 Bot 自由访问某个宿主机目录，
+# 设置环境变量 TANPOPO_HOST_WORKSPACE=/absolute/host/path 后重建/重启 compose；
+# 容器内固定访问路径为 /tanpopo/host_workspace。
+workspace_settings:
+  host_workspace:
+    container_path: "/tanpopo/host_workspace"
+    env_var: "TANPOPO_HOST_WORKSPACE"
+
 llm_auth:
   api_key: "your_api_key"
   base_url: "http://host.docker.internal:7700/v1"

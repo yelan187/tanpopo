@@ -22,6 +22,14 @@ class Config:
     ws_settings: dict[str, Any] = field(
         default_factory=lambda: {"host": "127.0.0.1", "port": 3001, "role": "client"}
     )
+    workspace_settings: dict[str, Any] = field(
+        default_factory=lambda: {
+            "host_workspace": {
+                "container_path": "/tanpopo/host_workspace",
+                "env_var": "TANPOPO_HOST_WORKSPACE",
+            }
+        }
+    )
     adapter_config: dict[str, Any] = field(
         default_factory=lambda: {
             "onebot": {

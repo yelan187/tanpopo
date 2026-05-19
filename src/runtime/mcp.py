@@ -68,6 +68,8 @@ def _normalize_server_config(
         args = ["-m", "src.mcp.plugin_manager"]
     if name == "workspace" and not args:
         args = ["-m", "src.mcp.workspace"]
+    if name == "git_ops" and not args:
+        args = ["-m", "src.mcp.git_ops"]
 
     enabled = server_config.get("enabled", True)
     if isinstance(enabled, str):

@@ -365,8 +365,10 @@ class AgentCore:
             "available and summarize briefly. If the user asks you to add, enable, disable, or "
             "inspect skills/MCPs, use plugin-manager and capability MCP tools instead of guessing. "
             "Write self-authored reusable MCP plugins under .agents/mcps/{name}/server.py, register "
-            "them with plugin-manager, and keep scratch files in agent_workspace or tmp. Runtime "
-            "plugin changes take effect after a reload request and the next message."
+            "them with plugin-manager, and keep scratch files in agent_workspace or tmp. For "
+            "self-authored skill/MCP changes that should be saved upstream, use git_ops to create "
+            "a non-main branch, commit only allowed paths, and push that branch. Runtime plugin "
+            "changes take effect after a reload request and the next message."
         )
 
     async def _ensure_agent_ready(self) -> None:

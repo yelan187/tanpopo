@@ -108,6 +108,17 @@ def default_mcp_registry() -> dict[str, Any]:
                 "env": {},
                 "description": "Manage skill and MCP runtime registry entries.",
             },
+            "git_ops": {
+                "enabled": True,
+                "transport": "stdio",
+                "command": "",
+                "args": ["-m", "src.mcp.git_ops"],
+                "cwd": ".",
+                "env": {
+                    "TANPOPO_GIT_ALLOWED_PATHS": ".agents/skills,.agents/mcps",
+                },
+                "description": "Controlled git status, commit, branch, and push tools.",
+            },
         }
     }
 

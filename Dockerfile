@@ -4,6 +4,10 @@ FROM python:3.12
 
 WORKDIR /tanpopo
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git openssh-client ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 # Provide npx for official Node-based MCP servers without installing Debian node/npm packages.
 COPY --from=node-runtime /usr/local/bin/node /usr/local/bin/node
 COPY --from=node-runtime /usr/local/lib/node_modules /usr/local/lib/node_modules
@@ -23,6 +27,5 @@ RUN uv tool install --default-index "${PIP_INDEX_URL}" mcp-server-fetch==2025.4.
 # 项目初始环境配置
 COPY . .
 RUN mkdir tmp
-RUN chmod +x start.sh
 
-CMD ./start.sh && python run.py
+CMD sh ./start.sh && python run.py
